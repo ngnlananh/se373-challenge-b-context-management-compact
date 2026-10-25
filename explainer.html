@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stage 03: Bash, giải thích tương tác</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+:root{
+  --bg0:#ffffff; --bg1:#f7f7f7; --bg2:#edebe9; --bg3:#d4cdc5; --bg4:#c5bdb3;
+  --fg:#1e3932; --red:#c8102e; --orange:#d97917; --yellow:#f2a900;
+  --green:#00704a; --green-dark:#006241; --brown:#6f4e37; --brown-light:#8b7355;
+  --grey:#666666; --green-soft:#e6f1ec; --yellow-soft:#fdf1d0; --red-soft:#fbe4e8;
+  --font:'IBM Plex Sans','Be Vietnam Pro','Segoe UI','Helvetica Neue',Arial,sans-serif;
+  --mono:'JetBrains Mono','SF Mono',Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html{font-size:18px;scroll-behavior:smooth}
+body{margin:0;background:var(--bg1);color:var(--fg);font-family:var(--font);line-height:1.6;font-size:1rem}
+code,pre,.mono{font-family:var(--mono)}
+code{background:var(--bg2);padding:.05em .35em;border-radius:6px;font-size:.88em}
+header.hero{background:var(--green-dark);color:#fff;padding:2.2rem 1.5rem 2.6rem}
+.wrap{max-width:1180px;margin:0 auto}
+.hero .kicker{font-size:.85rem;letter-spacing:.12em;text-transform:uppercase;color:#cfe8dc;font-weight:600}
+.hero h1{font-size:2.6rem;line-height:1.2;margin:.3rem 0 .6rem}
+.hero p{font-size:1.15rem;max-width:46em;margin:.3rem 0;color:#eaf5ef}
+.hero code{background:rgba(255,255,255,.2);color:#fff}
+.chips{display:flex;gap:.8rem;flex-wrap:wrap;margin-top:1.2rem}
+.chip{background:rgba(255,255,255,.14);border:2px solid rgba(255,255,255,.35);border-radius:14px;padding:.5rem 1rem;font-weight:600;font-size:1rem}
+.chip b{font-size:1.5rem;display:block;line-height:1.1}
+nav{position:sticky;top:0;z-index:20;background:var(--bg0);border-bottom:2px solid var(--bg3)}
+nav .wrap{display:flex;gap:.3rem;overflow-x:auto;padding:.4rem 1rem}
+nav a{white-space:nowrap;color:var(--fg);text-decoration:none;font-weight:600;font-size:.9rem;padding:.4rem .8rem;border-radius:10px}
+nav a:hover,nav a.on{background:var(--green);color:#fff}
+section{padding:2.6rem 1.5rem 1rem}
+section h2{font-size:2rem;line-height:1.25;margin:0 0 .4rem;color:var(--green-dark)}
+section h2 .n{display:inline-block;background:var(--green);color:#fff;border-radius:50%;width:2.2rem;height:2.2rem;text-align:center;line-height:2.2rem;font-size:1.1rem;margin-right:.6rem;vertical-align:middle}
+.lead{font-size:1.15rem;color:var(--brown);margin:.2rem 0 1.2rem;max-width:52em}
+.card{background:var(--bg0);border:2px solid var(--bg3);border-radius:18px;padding:1.2rem 1.4rem;margin:1rem 0}
+.card h3{margin:.1rem 0 .6rem;font-size:1.3rem}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem}
+@media(max-width:900px){.grid2,.grid3{grid-template-columns:1fr}html{font-size:16px}}
+button{font:inherit;font-weight:600;cursor:pointer;border:2px solid var(--green);background:var(--bg0);color:var(--green);border-radius:12px;padding:.45rem 1rem;transition:.15s}
+button:hover:not(:disabled){background:var(--green-soft)}
+button.primary{background:var(--green);color:#fff}
+button.primary:hover:not(:disabled){background:var(--green-dark)}
+button.danger{border-color:var(--red);color:var(--red)}
+button.danger:hover:not(:disabled){background:var(--red-soft)}
+button:disabled{opacity:.4;cursor:not-allowed}
+button.sel,button.sel:hover:not(:disabled){background:var(--green);color:#fff}
+button.sel:hover:not(:disabled){background:var(--green-dark)}
+button.sel .tag.real{background:#fff;color:var(--green-dark)}
+button.sel code,.sel code{background:rgba(255,255,255,.22);color:#fff}
+.row{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center}
+.note{background:var(--yellow-soft);border-left:6px solid var(--yellow);border-radius:10px;padding:.7rem 1rem;margin:.8rem 0;font-size:.95rem}
+.note.ok{background:var(--green-soft);border-color:var(--green)}
+.note.bad{background:var(--red-soft);border-color:var(--red)}
+.tag{display:inline-block;font-size:.75rem;font-weight:700;padding:.1rem .55rem;border-radius:20px;background:var(--bg2);color:var(--brown);vertical-align:middle}
+.tag.real{background:var(--green);color:#fff}
+.tag.sim{background:var(--yellow);color:#3a2b00}
+
+/* Architecture */
+.arch{display:grid;grid-template-columns:repeat(5,1fr);gap:.6rem;align-items:stretch;margin:1rem 0}
+.node{background:var(--bg0);border:3px solid var(--bg3);border-radius:16px;padding:.7rem .6rem;text-align:center;cursor:pointer;position:relative;font-weight:600;font-size:.95rem;transition:.15s}
+.node small{display:block;font-weight:400;color:var(--grey);font-family:var(--mono);font-size:.72rem;margin-top:.2rem}
+.node:hover{border-color:var(--green)}
+.node.on{border-color:var(--green);background:var(--green-soft);box-shadow:0 4px 0 var(--green)}
+.node .ico{font-size:1.6rem;display:block}
+.node.dim{opacity:.5;border-style:dashed}
+.arch .arrow{display:none}
+.archrow2{display:grid;grid-template-columns:repeat(5,1fr);gap:.6rem}
+.flowline{grid-column:1/-1;text-align:center;color:var(--grey);font-size:.9rem;margin:.1rem 0}
+#archDetail{min-height:7rem}
+#archDetail h4{margin:0 0 .3rem;font-size:1.2rem;color:var(--green-dark)}
+@media(max-width:900px){.arch,.archrow2{grid-template-columns:1fr 1fr}}
+
+/* Simulator */
+.stepper{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin:.8rem 0}
+.timeline{display:flex;gap:.4rem;margin:.8rem 0;flex-wrap:wrap}
+.tl{flex:1 1 170px;min-width:170px;overflow-wrap:anywhere;border:3px solid var(--bg3);background:var(--bg0);border-radius:14px;padding:.5rem .7rem;font-size:.85rem;cursor:pointer}
+.tl b{display:block;font-family:var(--mono);font-size:.85rem}
+.tl.done{border-color:var(--green);background:var(--green-soft)}
+.tl.cur{border-color:var(--orange);background:var(--yellow-soft);box-shadow:0 4px 0 var(--orange)}
+.badge{display:inline-block;padding:.2rem .9rem;border-radius:20px;font-weight:700;font-size:1rem;color:#fff;background:var(--grey)}
+.badge.ready{background:var(--grey)}.badge.model{background:var(--orange)}.badge.done{background:var(--green)}.badge.err{background:var(--red)}
+.counters{display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem;margin:.7rem 0}
+.counter{background:var(--bg1);border:2px solid var(--bg3);border-radius:12px;padding:.4rem .5rem;text-align:center;font-size:.78rem;line-height:1.25;color:var(--grey)}
+.counter b{display:block;font-size:1.8rem;color:var(--fg);line-height:1.1}
+.counter.hl{border-color:var(--green);background:var(--green-soft)}
+.counter.zero b{color:var(--red)}
+.chat{display:flex;flex-direction:column;gap:.5rem;margin:.5rem 0}
+.msg{padding:.6rem .9rem;border-radius:14px;max-width:92%;font-size:.95rem;white-space:pre-wrap}
+.msg.u{background:var(--green);color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
+.msg.a{background:var(--bg2);align-self:flex-start;border-bottom-left-radius:4px}
+.msg.pending{opacity:.55;font-style:italic}
+pre{background:var(--bg2);border-radius:12px;padding:.7rem .9rem;overflow:auto;font-size:.8rem;line-height:1.5;margin:.4rem 0;white-space:pre-wrap;word-break:break-word}
+.evlog{font-family:var(--mono);font-size:.8rem}
+.ev{display:flex;gap:.6rem;padding:.3rem .5rem;border-bottom:1px solid var(--bg2);align-items:baseline}
+.ev:last-child{border:0}
+.ev .s{background:var(--green);color:#fff;border-radius:6px;padding:0 .4rem;font-weight:600}
+.ev.new{background:var(--yellow-soft)}
+details{margin:.4rem 0}
+summary{cursor:pointer;font-weight:600;padding:.2rem 0}
+.empty{color:var(--red);font-weight:700}
+.panelhead{display:flex;justify-content:space-between;align-items:center;gap:.5rem;flex-wrap:wrap}
+.invisible-hint{color:var(--grey);font-size:.9rem}
+
+/* context bar */
+.stack{display:flex;height:3.2rem;border-radius:12px;overflow:hidden;border:2px solid var(--bg3);margin:.6rem 0}
+.stack div{display:flex;align-items:center;justify-content:center;color:#fff;font-weight:600;font-size:.8rem;transition:width .3s;overflow:hidden;white-space:nowrap}
+.legend{display:flex;gap:1rem;flex-wrap:wrap;font-size:.9rem}
+.legend i{display:inline-block;width:1rem;height:1rem;border-radius:4px;margin-right:.35rem;vertical-align:-2px}
+.sp{background:var(--green)}.cp{background:var(--orange)}.um{background:var(--brown)}.hs{background:var(--brown-light)}
+.hl-base{background:#cfe8dc}.hl-cap{background:#fbe2bf}
+.prompt-view{font-family:var(--mono);font-size:.82rem;white-space:pre-wrap;background:var(--bg0);border:2px solid var(--bg3);border-radius:12px;padding:.8rem 1rem;line-height:1.55}
+
+/* history */
+.hist{display:flex;gap:.3rem;flex-wrap:wrap;margin:.6rem 0;min-height:3rem}
+.hm{border-radius:10px;padding:.25rem .6rem;font-size:.8rem;font-weight:600;color:#fff}
+.hm.s{background:var(--green)}.hm.u{background:var(--brown)}.hm.a{background:var(--brown-light)}
+.hm.gone{background:var(--red-soft);color:var(--red);text-decoration:line-through;border:2px dashed var(--red)}
+.bars{display:flex;align-items:flex-end;gap:.5rem;height:150px;margin:.6rem 0;border-bottom:3px solid var(--bg3);padding:0 .3rem}
+.bar{flex:1;background:var(--green);border-radius:8px 8px 0 0;position:relative;min-width:30px;transition:height .3s;max-width:90px}
+.bar span{position:absolute;top:-1.4rem;left:0;right:0;text-align:center;font-size:.8rem;font-weight:700;color:var(--fg)}
+.bar em{position:absolute;bottom:-1.5rem;left:0;right:0;text-align:center;font-size:.75rem;font-style:normal;color:var(--grey)}
+.bar.fail{background:var(--red)}
+
+/* loop */
+.slots{display:grid;grid-template-columns:repeat(8,1fr);gap:.4rem;margin:.8rem 0}
+.slot{border:3px solid var(--bg3);border-radius:12px;padding:.4rem .2rem;text-align:center;font-size:.8rem;background:var(--bg0);min-height:4.2rem}
+.slot b{display:block;font-size:1.1rem}
+.slot.m{border-color:var(--green);background:var(--green-soft)}
+.slot.t{border-color:var(--brown-light);background:var(--bg2)}
+.slot.cut{border-color:var(--red);background:var(--red-soft);color:var(--red)}
+input[type=range]{width:100%;accent-color:var(--green);height:2rem}
+.switch{display:inline-flex;border:2px solid var(--green);border-radius:12px;overflow:hidden}
+.switch button{border:0;border-radius:0}
+
+/* trace */
+.jl{font-family:var(--mono);font-size:.78rem;background:var(--bg0);border:2px solid var(--bg3);border-radius:12px;padding:.5rem .8rem;margin:.4rem 0;cursor:pointer;word-break:break-all;line-height:1.55}
+.jl:hover{border-color:var(--green)}
+.jl.on{border-color:var(--green);background:var(--green-soft)}
+.jl .k{color:var(--green-dark);font-weight:600}
+.jl .t{color:var(--red);font-weight:600}
+table{border-collapse:collapse;width:100%;font-size:.95rem}
+th,td{border-bottom:2px solid var(--bg2);padding:.5rem .6rem;text-align:left;vertical-align:top}
+th{color:var(--green-dark);background:var(--bg1)}
+.toggle{display:flex;align-items:center;gap:.6rem;font-weight:600;cursor:pointer;margin:.3rem 0}
+.toggle input{width:1.3rem;height:1.3rem;accent-color:var(--green)}
+.chatinput{display:flex;gap:.5rem;margin-top:.6rem}
+.chatinput input{flex:1;font:inherit;padding:.6rem .9rem;border-radius:12px;border:2px solid var(--bg3);background:var(--bg0)}
+.chatinput input:disabled{background:var(--bg2);cursor:not-allowed}
+footer{padding:2rem 1.5rem 3rem;color:var(--grey);font-size:.9rem}
+
+/* Stage 03 additions */
+.node.new{border-color:var(--orange)}
+.node .newb{position:absolute;top:-.65rem;right:.5rem;background:var(--orange);color:#fff;font-size:.7rem;padding:0 .55rem;border-radius:10px;font-family:var(--font);font-weight:700}
+.slots.nine{grid-template-columns:repeat(9,1fr)}
+@media(max-width:900px){.slots,.slots.nine{grid-template-columns:repeat(3,1fr)}}
+.tag.yes{background:var(--green);color:#fff}
+.tag.no{background:var(--red);color:#fff}
+.cell{border:2px solid var(--bg3);border-radius:12px;padding:.55rem .75rem;font-size:.88rem;background:var(--bg0)}
+.cell.okc{border-color:var(--green);background:var(--green-soft)}
+.cell.blk{border-color:var(--red);background:var(--red-soft)}
+.cell.warn{border-color:var(--orange);background:var(--yellow-soft)}
+.cell b{display:block;font-size:.8rem;color:var(--grey);margin-bottom:.15rem}
+.meter{height:1.7rem;border:2px solid var(--bg3);border-radius:10px;position:relative;background:var(--bg0);overflow:hidden;margin:.5rem 0}
+.meter i{display:block;height:100%;background:var(--green);transition:width .2s}
+.meter i.over{background:var(--red)}
+.meter .mark{position:absolute;top:0;bottom:0;width:3px;background:var(--red)}
+.pick{display:flex;gap:.4rem;flex-wrap:wrap;margin:.5rem 0}
+.pick button{font-size:.85rem;padding:.3rem .7rem;font-family:var(--mono);font-weight:500}
+.pick.plain button{font-family:var(--font);font-weight:600}
+.frame{border:2px solid var(--bg3);border-radius:12px;padding:.5rem .8rem;margin:.4rem 0;background:var(--bg0);font-size:.88rem}
+.frame .fh{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin-bottom:.2rem}
+.badge.sm{font-size:.75rem;padding:.05rem .6rem}
+.kv td:first-child{font-family:var(--mono);font-size:.85rem;white-space:nowrap}
+tr.hit td{background:var(--yellow-soft)}
+.mono-s{font-family:var(--mono);font-size:.82rem}
+.stack div.sys{background:var(--green)}
+.stack div.usr{background:var(--brown)}
+.stack div.arg{background:var(--orange)}
+.stack div.res{background:var(--red)}
+.sw-sys{background:var(--green)}.sw-usr{background:var(--brown)}.sw-arg{background:var(--orange)}.sw-res{background:var(--red)}
+.stepnote{min-height:3.2rem}
+</style>
+</head>
+<body>
+
+<header class="hero"><div class="wrap">
+  <div class="kicker">Agent Tools &amp; Skills Lab</div>
+  <h1>Stage 03: Bash</h1>
+  <p>Stage 03 thêm tool <code style="background:rgba(255,255,255,.18)">bash</code> vào agent của Stage 02. Agent có ba tool (<code style="background:rgba(255,255,255,.18)">read_file</code>, <code style="background:rgba(255,255,255,.18)">write_file</code>, <code style="background:rgba(255,255,255,.18)">bash</code>) và một skill (<code style="background:rgba(255,255,255,.18)">weekly-report</code>). Tool bash chạy lệnh <code style="background:rgba(255,255,255,.18)">bash -c</code> trong thư mục workspace rồi trả về stdout, stderr và exit code. Bash không phải sandbox: giới hạn path của hai file tool không áp dụng cho bash. Trang này giải thích qua các phần tương tác bên dưới.</p>
+  <div class="chips">
+    <div class="chip"><b>3</b>tool</div>
+    <div class="chip"><b>1</b>skill</div>
+    <div class="chip"><b>10</b>giây timeout của bash</div>
+    <div class="chip"><b>20.000</b>ký tự tối đa cho mỗi stdout, stderr</div>
+    <div class="chip"><b>8</b>lần gọi model tối đa mỗi lượt</div>
+    <div class="chip"><b>20</b>tool call tối đa mỗi lượt</div>
+  </div>
+</div></header>
+
+<nav><div class="wrap" id="nav">
+  <a href="#s1">Kiến trúc</a><a href="#s2">Ba tool</a><a href="#s3">Một lượt chạy</a>
+  <a href="#s4">Kết quả của bash</a><a href="#s5">Giới hạn và sandbox</a><a href="#s6">Context</a>
+  <a href="#s7">Vòng lặp</a><a href="#s8">Bash, file và skill</a><a href="#s9">Trace</a><a href="#s10">Cấu hình</a>
+</div></nav>
+
+<!-- 1 -->
+<section id="s1"><div class="wrap">
+  <h2><span class="n">1</span>Kiến trúc</h2>
+  <p class="lead">Bấm vào từng khối để xem file tương ứng và nhiệm vụ của nó. Khối viền cam là phần mới so với Stage 02: file <code>tools/bash.py</code>, dòng <code>TOOLS = [read_file, write_file, bash]</code> trong <code>agent.py</code> và đoạn mô tả bash trong <code>prompts.py</code>. Các file còn lại giữ nguyên.</p>
+  <div class="arch" id="arch"></div>
+  <div class="card" id="archDetail"></div>
+</div></section>
+
+<!-- 2 -->
+<section id="s2"><div class="wrap">
+  <h2><span class="n">2</span>Ba tool</h2>
+  <p class="lead">Chọn một tool để xem tham số, kết quả, mã lỗi và schema mà model nhận được. Điểm khác chính: file tool trả lỗi khi vi phạm quy tắc path, còn bash coi mọi lệnh đã chạy xong là <code>ok: true</code>, kể cả khi exit code khác 0.</p>
+  <div class="card">
+    <div class="switch" id="toolPick"></div>
+    <div class="grid2" style="margin-top:.8rem">
+      <div id="toolInfo"></div>
+      <div>
+        <h3 style="margin-top:0">Schema gửi cho model <span class="tag sim">suy luận</span></h3>
+        <pre id="toolSchema"></pre>
+        <p class="invisible-hint">Schema do <code>convert_to_openai_tool</code> sinh ra từ chữ ký hàm và docstring (xem <code>tool_schema()</code> trong <code>observer.py</code>). Bản ở đây là dạng rút gọn tự dựng lại, không phải payload chụp từ app.</p>
+      </div>
+    </div>
+  </div>
+</div></section>
+
+<!-- 3 -->
+<section id="s3"><div class="wrap">
+  <h2><span class="n">3</span>Một lượt chạy</h2>
+  <p class="lead">Chọn một kịch bản rồi bấm <b>Bước tiếp</b> để xem từng event theo thứ tự. Một lượt có tool cần ít nhất hai lần gọi model: lần đầu model yêu cầu tool, lần sau model đọc kết quả rồi trả lời. Cột bên phải mô phỏng panel State &amp; Context của app Streamlit.</p>
+  <div class="row" id="presets"></div>
+  <div class="note" id="simNote"></div>
+  <div class="stepper">
+    <button id="bPrev">Lùi</button>
+    <button id="bNext" class="primary">Bước tiếp</button>
+    <button id="bAuto">Tự chạy</button>
+    <button id="bReset" class="danger">Làm lại</button>
+  </div>
+  <div class="timeline" id="timeline"></div>
+  <div class="note ok stepnote" id="stepNote"></div>
+  <div class="grid2">
+    <div class="card">
+      <h3>💬 Cột chat</h3>
+      <div class="chat" id="simChat"></div>
+      <details open><summary>Các bước thực hiện (<span id="sumModel">0</span> model call, <span id="sumTool">0</span> tool call)</summary>
+        <div id="simSteps" class="invisible-hint">Chưa có bước nào.</div>
+      </details>
+    </div>
+    <div class="card">
+      <div class="panelhead"><h3>📊 State &amp; Context</h3><span class="badge ready" id="simBadge">Sẵn sàng</span></div>
+      <div class="counters">
+        <div class="counter" id="cTurn">Lượt chat<b>0</b></div>
+        <div class="counter" id="cModel">Model call<b>0</b></div>
+        <div class="counter" id="cSeq">Bước sự kiện<b>0</b></div>
+        <div class="counter" id="cTool">Tool calls<b>0</b></div>
+      </div>
+      <details open><summary>Tools được cấp <span class="tag real">dữ liệu thật</span></summary>
+        <div class="mono-s">read_file, write_file, <b style="color:var(--orange)">bash</b></div></details>
+      <details open><summary>Skills trong catalog <span class="tag real">dữ liệu thật</span></summary>
+        <div class="mono-s">weekly-report (skills/weekly-report/SKILL.md). Mới là metadata, chưa phải đã load.</div></details>
+      <details open><summary>Skill content đã vào history</summary>
+        <div class="mono-s">0. Kịch bản bash không đọc SKILL.md bằng <code>read_file</code>.</div></details>
+      <details open><summary>Event log</summary><div class="evlog" id="simLog"></div></details>
+      <details><summary>Context gửi model (snapshot)</summary><div id="simSnap" class="invisible-hint">Chưa có event model_request.</div></details>
+    </div>
+  </div>
+</div></section>
+
+<!-- 4 -->
+<section id="s4"><div class="wrap">
+  <h2><span class="n">4</span>Kết quả của bash</h2>
+  <p class="lead">Chọn một lệnh để xem hàm <code>_run_bash</code> xử lý thế nào và model nhận được JSON gì. Cấu trúc kết quả lấy từ code. Với lệnh phụ thuộc máy (ví dụ phiên bản Python) giá trị stdout là <span class="tag sim">minh hoạ</span>.</p>
+  <div class="card">
+    <div class="pick" id="cmdPick"></div>
+    <div class="timeline" id="flow"></div>
+    <div class="grid2">
+      <div>
+        <h3 style="margin-top:0">Kết quả JSON <span class="tag real">dữ liệu thật</span></h3>
+        <pre id="resJson"></pre>
+        <div class="row"><span>Badge trong UI:</span><span class="badge" id="resBadge"></span><span>Status của ToolMessage:</span><span class="badge done">success</span></div>
+        <p class="invisible-hint" id="resBadgeWhy"></p>
+      </div>
+      <div>
+        <h3 style="margin-top:0">Các trường</h3>
+        <table class="kv" id="resTable"></table>
+      </div>
+    </div>
+    <div class="note ok" id="resSay"></div>
+  </div>
+</div></section>
+
+<!-- 5 -->
+<section id="s5"><div class="wrap">
+  <h2><span class="n">5</span>Giới hạn và sandbox</h2>
+  <p class="lead">Phần này tách rõ cái code thực sự áp dụng khỏi cái code không áp dụng. Tool bash có cwd, env, timeout và giới hạn output. Tool bash không có path sandbox, không lọc lệnh và không giới hạn tài nguyên.</p>
+
+  <div class="card">
+    <h3>Bảng cơ chế</h3>
+    <table id="mechTable"></table>
+    <div class="note bad"><b>Bash không phải sandbox.</b> Lệnh vẫn đọc và ghi được ngoài workspace với quyền của user chạy app. Chỉ chạy lab với dữ liệu giả, không mount thư mục cá nhân hoặc secrets vào máy chạy lab (README, mục Giới hạn môi trường).</div>
+  </div>
+
+  <div class="card">
+    <h3>Path: file tool và bash</h3>
+    <p class="invisible-hint">Chọn một thao tác để so sánh cùng ý định qua file tool và qua bash. Cột file tool là hành vi đã có test. Cột bash <span class="tag sim">suy luận</span> từ README: path check của file tool không áp dụng cho bash.</p>
+    <div class="pick plain" id="attPick"></div>
+    <div class="grid2">
+      <div class="cell" id="attFile"></div>
+      <div class="cell" id="attBash"></div>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <h3>Timeout</h3>
+      <label>Lệnh chạy trong <b id="toVal">4</b> giây</label>
+      <input type="range" id="toRange" min="0" max="20" value="4">
+      <label class="toggle"><input type="checkbox" id="toEcho" checked> Lệnh in ra một dòng stdout trước khi chạy lâu</label>
+      <div class="meter" id="toMeter"><i id="toFill"></i><span class="mark" style="left:50%"></span></div>
+      <div class="note" id="toNote"></div>
+    </div>
+    <div class="card">
+      <h3>Cắt output</h3>
+      <label>Độ dài stdout của lệnh: <b id="clVal">5000</b> ký tự</label>
+      <input type="range" id="clRange" min="0" max="60000" step="500" value="5000">
+      <div class="meter" id="clMeter"><i id="clFill"></i><span class="mark" style="left:33.33%"></span></div>
+      <div class="note" id="clNote"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Biến môi trường</h3>
+    <p class="invisible-hint">App chạy với env của user, nhưng lệnh bash chỉ nhận 6 biến do <code>minimal_env()</code> dựng. Chọn LANG của máy chạy app để xem kết quả.</p>
+    <div class="pick plain" id="langPick"></div>
+    <div class="grid2">
+      <div><h4 style="margin:.2rem 0">Env của app Streamlit</h4><table id="envHost"></table></div>
+      <div><h4 style="margin:.2rem 0">Env mà lệnh bash nhận</h4><table class="kv" id="envSub"></table></div>
+    </div>
+    <p class="invisible-hint">Bash có thể tự thêm vài biến như <code>PWD</code>, <code>SHLVL</code>, <code>_</code> khi khởi động <span class="tag sim">suy luận</span>. Test chỉ kiểm tra không có chuỗi <code>OPENAI</code> trong output của lệnh <code>env</code>.</p>
+  </div>
+</div></section>
+
+<!-- 6 -->
+<section id="s6"><div class="wrap">
+  <h2><span class="n">6</span>Context gửi cho model</h2>
+  <p class="lead">Mỗi lần gọi model nhận system prompt, danh sách message và schema của ba tool. Kết quả bash nằm trong message role <code>tool</code> và ở lại history cho các lượt sau, nên output lớn làm mọi lần gọi model sau đó đều lớn theo.</p>
+  <div class="grid2">
+    <div class="card">
+      <h3>System prompt</h3>
+      <p class="invisible-hint">System prompt ghép từ ba đoạn. Bỏ chọn một đoạn để xem prompt và số ký tự thay đổi.</p>
+      <label class="toggle"><input type="checkbox" id="tBase" checked> <span class="legend"><i class="sp"></i></span>BASE_PROMPT: vai trò và quy tắc chung</label>
+      <label class="toggle"><input type="checkbox" id="tCap" checked> <span class="legend"><i class="cp"></i></span>CAPABILITY_PROMPT: workspace, file tool và bash</label>
+      <label class="toggle"><input type="checkbox" id="tSkill" checked> <span class="legend"><i class="hs"></i></span>SKILLS_PROMPT và catalog <code>&lt;available_skills&gt;</code></label>
+      <div class="note ok" id="ctxNote"></div>
+      <p class="mono" id="ctxNums" style="font-size:.85rem"></p>
+      <div class="prompt-view" id="promptView" style="max-height:26rem;overflow:auto"></div>
+    </div>
+    <div class="card">
+      <h3>History qua nhiều lượt có bash</h3>
+      <p class="invisible-hint">Mỗi lượt user nhờ chạy một lệnh bash (prompt thử số 1 của README). Kéo thanh để chọn độ dài stdout. Biểu đồ là số ký tự ở model call đầu tiên của lượt kế tiếp.</p>
+      <label>Độ dài stdout mỗi lần chạy: <b id="hOut">300</b> ký tự</label>
+      <input type="range" id="hRange" min="0" max="30000" step="100" value="300">
+      <div class="row">
+        <button class="primary" id="hSend">Thêm một lượt có bash</button>
+        <button id="hNew">Cuộc trò chuyện mới</button>
+      </div>
+      <div class="counters" style="grid-template-columns:repeat(3,1fr)">
+        <div class="counter">Số lượt<b id="hTurn">0</b></div>
+        <div class="counter hl">Số message ở lượt kế tiếp<b id="hMsgs">1</b></div>
+        <div class="counter">Số ký tự (trừ system)<b id="hChars">0</b></div>
+      </div>
+      <div class="legend"><span><i class="sw-usr"></i>user</span><span><i class="sw-arg"></i>arguments của tool call</span><span><i class="sw-res"></i>tool result</span></div>
+      <div class="stack" id="hStack"></div>
+      <div class="bars" id="hbars"></div>
+      <div class="note" id="hNote"></div>
+    </div>
+  </div>
+</div></section>
+
+<!-- 7 -->
+<section id="s7"><div class="wrap">
+  <h2><span class="n">7</span>Vòng lặp và giới hạn</h2>
+  <p class="lead">Agent lặp lại: gọi model, nếu model yêu cầu tool thì chạy tool rồi gọi model lần nữa. Có hai giới hạn tách biệt: tối đa 8 lần gọi model và tối đa 20 tool call mỗi lượt. Chỉnh hai thanh để xem từng giới hạn tác động thế nào.</p>
+  <div class="card">
+    <div class="grid2">
+      <div><label>Số lần model liên tiếp yêu cầu tool: <b id="loopR">2</b></label><input type="range" id="loopRange" min="0" max="10" value="2"></div>
+      <div><label>Số tool call trong mỗi lần yêu cầu: <b id="loopK">1</b></label><input type="range" id="loopKRange" min="1" max="8" value="1"></div>
+    </div>
+    <div class="slots nine" id="slots"></div>
+    <div class="counters" style="grid-template-columns:repeat(4,1fr)">
+      <div class="counter" id="lcModel">Model call<b>0</b></div>
+      <div class="counter" id="lcTool">Tool call đã chạy<b>0</b></div>
+      <div class="counter" id="lcBlock">Tool call bị chặn<b>0</b></div>
+      <div class="counter" id="lcEnd">Kết thúc bởi<b>-</b></div>
+    </div>
+    <div class="meter"><i id="lcMeter"></i></div>
+    <div class="note" id="loopNote"></div>
+    <table>
+      <tr><th>Giới hạn</th><th>Giá trị</th><th>Ý nghĩa</th></tr>
+      <tr><td><code>MODEL_CALL_LIMIT</code></td><td>8</td><td><code>ModelCallLimitMiddleware(run_limit=8, exit_behavior="end")</code>. Trước lần gọi model thứ 9, middleware kết thúc lượt bằng một AIMessage báo vượt giới hạn.</td></tr>
+      <tr><td><code>TOOL_CALL_LIMIT</code></td><td>20</td><td><code>ToolCallLimitMiddleware(run_limit=20)</code>. Code lab không đặt <code>exit_behavior</code>; thư viện đang cài mặc định là <code>"continue"</code>: tool call vượt giới hạn nhận ToolMessage lỗi, model vẫn được gọi tiếp.</td></tr>
+      <tr><td><code>RECURSION_LIMIT</code></td><td>50</td><td>Số bước tối đa của LangGraph. Đây không phải số tool call.</td></tr>
+      <tr><td>Timeout của bash</td><td>10 giây</td><td>Áp dụng cho từng lệnh bash, không cho cả lượt.</td></tr>
+    </table>
+  </div>
+</div></section>
+
+<!-- 8 -->
+<section id="s8"><div class="wrap">
+  <h2><span class="n">8</span>Bash, file tool và skill</h2>
+  <p class="lead">Ba tool dùng chung một workspace nhưng có quy tắc khác nhau. Skill <code>weekly-report</code> chỉ dùng <code>read_file</code> và <code>write_file</code>. Bash là tool độc lập, nhưng Observer xử lý nó khác <code>read_file</code> khi thống kê skill đã load.</p>
+
+  <div class="card">
+    <h3>So sánh ba tool</h3>
+    <table>
+      <tr><th></th><th><code>read_file</code></th><th><code>write_file</code></th><th><code>bash</code></th></tr>
+      <tr><td>Việc làm</td><td>Đọc một file UTF-8</td><td>Ghi một file UTF-8</td><td>Chạy một lệnh <code>bash -c</code></td></tr>
+      <tr><td>Phạm vi path</td><td>Trong workspace</td><td>Chỉ dưới <code>output/</code></td><td>Không kiểm tra</td></tr>
+      <tr><td>Giới hạn</td><td>200.000 bytes mỗi file</td><td>Không có giới hạn kích thước trong code</td><td>10 giây, 20.000 ký tự mỗi stream</td></tr>
+      <tr><td>Khi vi phạm</td><td><code>ok: false</code> kèm <code>error.code</code></td><td><code>ok: false</code> kèm <code>error.code</code></td><td><code>ok: false</code> chỉ với <code>EMPTY_COMMAND</code> và <code>TIMEOUT</code></td></tr>
+      <tr><td>Tính vào "skill đã load"</td><td>Có, nếu đọc <code>skills/&lt;tên&gt;/SKILL.md</code> thành công</td><td>Không</td><td>Không</td></tr>
+    </table>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <h3>Chọn tool cho một việc <span class="tag sim">suy luận</span></h3>
+      <div class="pick plain" id="taskPick"></div>
+      <div class="note ok" id="taskNote"></div>
+    </div>
+    <div class="card">
+      <h3>Đọc SKILL.md bằng tool nào?</h3>
+      <div class="switch" id="skillMode">
+        <button class="sel" data-m="0"><code>read_file</code></button>
+        <button data-m="1"><code>bash</code> với cat</button>
+      </div>
+      <pre id="skillCall"></pre>
+      <div class="counters" style="grid-template-columns:repeat(2,1fr)">
+        <div class="counter" id="skHist">Nội dung SKILL.md trong history<b>có</b></div>
+        <div class="counter" id="skInv">Skill content đã vào history (panel)<b>1</b></div>
+      </div>
+      <div class="note" id="skillNote"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Skill weekly-report dùng tool nào</h3>
+    <p class="invisible-hint">Các bước lấy từ <code>workspace/skills/weekly-report/SKILL.md</code> và test <code>test_agent.py</code>. Bấm từng bước.</p>
+    <div class="timeline" id="skFlow"></div>
+    <div class="note" id="skFlowNote"></div>
+  </div>
+</div></section>
+
+<!-- 9 -->
+<section id="s9"><div class="wrap">
+  <h2><span class="n">9</span>Trace JSONL</h2>
+  <p class="lead">Mỗi lượt chat ghi một file trong <code>traces/</code>, mỗi dòng là một event. Thư mục <code>traces/</code> của project này hiện chỉ có <code>.gitkeep</code>, nên các dòng bên dưới là <span class="tag sim">minh hoạ</span> cho kịch bản exit code 1: tên trường lấy từ <code>observer.py</code> và <code>trace.py</code>, giá trị trong dấu <code>&lt; &gt;</code> là chỗ trống vì chưa có số đo thật. Bấm vào từng dòng để đọc giải thích.</p>
+  <div class="grid2">
+    <div id="jls"></div>
+    <div class="card" id="jlDetail"></div>
+  </div>
+</div></section>
+
+<!-- 10 -->
+<section id="s10"><div class="wrap">
+  <h2><span class="n">10</span>Cấu hình</h2>
+  <p class="lead">App đọc cấu hình từ file <code>.env</code>. Bật hoặc tắt từng biến để xem giao diện phản ứng khi thiếu cấu hình. Các biến này chỉ app dùng; lệnh bash không nhận chúng (xem phần 5).</p>
+  <div class="grid2">
+    <div class="card">
+      <label class="toggle"><input type="checkbox" id="eKey" checked> <code>OPENAI_API_KEY</code> (bắt buộc)</label>
+      <label class="toggle"><input type="checkbox" id="eModel" checked> <code>MODEL_NAME</code> (bắt buộc)</label>
+      <label class="toggle"><input type="checkbox" id="eBase"> <code>OPENAI_BASE_URL</code> (tùy chọn)</label>
+      <div class="note" id="eNote"></div>
+      <div class="chatinput"><input id="eInput" placeholder="Nhắn cho agent…"><button class="primary" id="eSend">Gửi</button></div>
+    </div>
+    <div class="card">
+      <h3>Hàm <code>build_model()</code> tạo model như sau</h3>
+      <pre id="ePre"></pre>
+      <p class="invisible-hint">App không truyền <code>temperature</code> hay tham số nào khác. API key không được ghi vào trace hay log. Model cần hỗ trợ native tool calling.</p>
+    </div>
+  </div>
+</div></section>
+
+<footer><div class="wrap">Nguồn: <code>tools/bash.py</code>, <code>tools/files.py</code>, <code>agent.py</code>, <code>config.py</code>, <code>prompts.py</code>, <code>observer.py</code>, <code>trace.py</code>, <code>skill_catalog.py</code>, <code>README.md</code>, thư mục <code>tests/</code> và <code>workspace/</code> của project này. Nhãn <span class="tag real">dữ liệu thật</span> là dữ liệu lấy từ code, test hoặc README. Nhãn <span class="tag sim">minh hoạ</span> là phần mô phỏng. Nhãn <span class="tag sim">suy luận</span> là điều rút ra từ code nhưng chưa có test hoặc trace kiểm chứng.</div></footer>
+
+<script>
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const fmtN=n=>n.toLocaleString('de-DE'); // 20.000
+// json.dumps(ensure_ascii=False) của Python: dấu cách sau "," và ":"
+function py(v){
+  if(v===null)return 'null'; if(typeof v==='boolean')return v?'true':'false'; if(typeof v==='number')return String(v);
+  if(typeof v==='string')return JSON.stringify(v);
+  if(Array.isArray(v))return '['+v.map(py).join(', ')+']';
+  return '{'+Object.entries(v).map(([k,x])=>JSON.stringify(k)+': '+py(x)).join(', ')+'}';
+}
+
+/* ---------- data from prompts.py, skill_catalog.py ---------- */
+const BASE=`Bạn là trợ lý trong lab "Agent Tools & Skills". Trả lời bằng tiếng Việt, ngắn gọn, rõ ràng.
+
+Quy tắc:
+- Chỉ dùng các tool được cấp trong request để thao tác dữ liệu. Nếu không có tool phù hợp, nói rõ giới hạn thay vì đoán.
+- Chỉ nói đã đọc, ghi hoặc chạy một thứ khi đã nhận tool result thành công cho đúng thao tác đó.
+- Khi tool trả lỗi, báo lỗi cho người dùng và đề xuất cách xử lý; không bịa kết quả.`;
+const CAP=`Workspace:
+- Mọi đường dẫn file đều tương đối workspace, ví dụ data/weekly_notes.md.
+- read_file đọc được file trong workspace. write_file chỉ ghi được dưới output/, ví dụ output/summary.md.
+- bash chạy lệnh ngắn với cwd là workspace, timeout 10 giây. \`python\` là Python của project.
+- Với bash, đọc exit_code, stdout, stderr trong kết quả. exit_code khác 0 là chương trình báo lỗi; timed_out=true là lệnh bị dừng. Báo đúng kết quả thực tế.`;
+const SKILLS=`Skills:
+Các skill dưới đây chứa hướng dẫn chuyên biệt. Danh sách chỉ có metadata; nội dung skill chưa được nạp.
+- Khi task khớp description của một skill, dùng read_file đọc SKILL.md tại <location> trước khi làm, rồi làm theo hướng dẫn trong đó.
+- Đường dẫn tương đối trong SKILL.md được resolve từ thư mục chứa SKILL.md. Ví dụ references/x.md của skill tại skills/abc/SKILL.md là skills/abc/references/x.md.
+- Chỉ đọc tài nguyên cần cho task. Không load skill khi task không liên quan.`;
+const DESC='Tạo báo cáo tiến độ tuần từ file ghi chú công việc trong workspace (ví dụ data/weekly_notes.md) và lưu thành file Markdown dưới output/. Dùng khi người dùng yêu cầu báo cáo tuần, tổng hợp tiến độ tuần hoặc weekly report.';
+const CATALOG=`<available_skills>
+  <skill>
+    <name>weekly-report</name>
+    <description>${DESC}</description>
+    <location>skills/weekly-report/SKILL.md</location>
+  </skill>
+</available_skills>`;
+const SKILLBLOCK=SKILLS+"\n\n"+CATALOG;
+const SYSTEM=[BASE,CAP,SKILLBLOCK].join("\n\n");
+const SKILL_META=[{name:'weekly-report',description:DESC,location:'skills/weekly-report/SKILL.md'}];
+
+/* ---------- mirror of tools/bash.py ---------- */
+const MAX_OUT=20000, TIMEOUT=10;
+function clip(t){return t.length<=MAX_OUT?[t,false]:[t.slice(0,MAX_OUT)+`\n…[đã cắt, tổng ${t.length} ký tự]`,true]}
+function runBash(p){ // p: {empty, stdout, stderr, code, timeout}
+  if(p.empty)return {ok:false,exit_code:null,stdout:'',stderr:'',timed_out:false,error:{code:'EMPTY_COMMAND',message:'Command rỗng.'}};
+  const [so,oc]=clip(p.stdout||''),[se,ec]=clip(p.stderr||'');
+  if(p.timeout)return {ok:false,exit_code:null,stdout:so,stderr:se,timed_out:true,truncated:oc||ec,error:{code:'TIMEOUT',message:`Command chạy quá ${TIMEOUT} giây, đã dừng. stdout/stderr là output một phần.`}};
+  return {ok:true,exit_code:p.code,stdout:so,stderr:se,timed_out:false,truncated:oc||ec};
+}
+function abbr(o){ // rút gọn chuỗi dài chỉ khi hiển thị
+  return JSON.parse(JSON.stringify(o,(k,v)=>typeof v==='string'&&v.length>200?v.slice(0,40)+`[hiển thị rút gọn, ${v.length} ký tự]`+v.slice(-45):v));
+}
+const PY_ERR_CMD='python -c "import sys; print(\'Lỗi thử nghiệm\', file=sys.stderr); sys.exit(1)"';
+
+/* ---------- 1. architecture ---------- */
+const NODES=[
+ {i:'👤',t:'Người dùng',f:'trình duyệt',d:'Nhập prompt vào ô chat. Mỗi lần gửi là một <b>lượt chat</b>. README có hai prompt thử cho stage này: <code>Chạy python --version và cho biết kết quả.</code> và một prompt yêu cầu chạy lệnh Python in lỗi ra stderr rồi thoát với exit code 1.'},
+ {i:'🖥️',t:'Streamlit UI',f:'app.py',d:'Vẽ cột chat và cột State &amp; Context. Chạy agent bằng <code>agent.stream(..., config={"recursion_limit": 50}, stream_mode=["updates","custom"])</code>. Mỗi tool call hiện thành một khung có badge <b>ok</b> hoặc <b>lỗi</b>; badge lỗi khi <code>result.ok</code> là <code>false</code>. Khi arguments chỉ có key <code>command</code>, lệnh hiện dạng code bash. Lượt lỗi thì history được rollback.'},
+ {i:'🧠',t:'LangChain agent',f:'agent.py',d:'<code>create_agent(model, tools=TOOLS, system_prompt, middleware=[…])</code> với <code>TOOLS = [read_file, write_file, bash]</code>. <code>system_prompt()</code> ghép BASE_PROMPT, CAPABILITY_PROMPT và catalog skill quét từ <code>workspace/skills</code>. Thay đổi so với Stage 02 chỉ là thêm <code>bash</code> vào <code>TOOLS</code>.'},
+ {i:'🧱',t:'Middleware',f:'3 middleware',d:'<b>ModelCallLimitMiddleware</b> (<code>run_limit=8</code>, <code>exit_behavior="end"</code>). <b>ToolCallLimitMiddleware</b> (<code>run_limit=20</code>). <b>ObserverMiddleware</b> đứng cuối danh sách, sát model và tool nhất: <code>wrap_model_call</code> phát <code>model_request</code> và <code>model_response</code>, <code>wrap_tool_call</code> phát <code>tool_started</code> và <code>tool_finished</code>. Nếu tool ném exception, observer phát <code>tool_finished</code> với <code>status="exception"</code> rồi ném lại.'},
+ {i:'☁️',t:'ChatOpenAI và provider',f:'build_model()',d:'<code>ChatOpenAI(model, api_key[, base_url])</code>. Endpoint phải hỗ trợ tool calling theo chuẩn OpenAI Chat Completions: <code>tools</code>, <code>tool_calls</code> và message role <code>tool</code>. Stage này cần điều đó vì model phải yêu cầu được <code>bash</code>.'},
+];
+const SIDE=[
+ {i:'🐚',t:'Tool bash',f:'tools/bash.py',nw:1,d:'<b>Mới ở Stage 03.</b> Gồm hằng số <code>DEFAULT_TIMEOUT_SECONDS=10</code>, <code>MAX_OUTPUT_CHARS=20_000</code>, <code>SYSTEM_PATH</code>; hàm <code>minimal_env()</code> dựng env tối thiểu, <code>_clip()</code> cắt output, <code>_run_bash()</code> chạy <code>subprocess.Popen(["bash","-c",command])</code> và tool <code>bash(command)</code> trả JSON string. Test nằm ở <code>tests/test_bash.py</code>.'},
+ {i:'📄',t:'File tool',f:'tools/files.py',d:'<code>read_file(path)</code> và <code>write_file(path, content)</code>. Path được resolve (kể cả symlink) rồi kiểm tra còn trong workspace (đọc) hoặc trong <code>workspace/output</code> (ghi). Đường dẫn tuyệt đối và <code>~</code> bị từ chối. Lỗi dự kiến trả về JSON <code>{"ok": false, "error": {...}}</code>.'},
+ {i:'📚',t:'Workspace và skills',f:'workspace/, skill_catalog.py',d:'<code>paths.WORKSPACE_DIR</code> chứa <code>data/weekly_notes.md</code>, <code>skills/weekly-report/</code> và <code>output/</code>. Lần chạy đầu app copy từ <code>fixtures/</code>; <code>reset_workspace.py</code> khôi phục dữ liệu gốc (chỉ chạy khi có marker <code>.lab-workspace</code>). <code>scan_skills()</code> chỉ lấy <code>name</code>, <code>description</code>, <code>location</code> vào system prompt.'},
+ {i:'🔭',t:'Observer và trace',f:'observer.py, trace.py',d:'Observer nhận event ở luồng UI, đánh số sequence, đếm model call và tool call, giữ snapshot và message history. 7 loại event: <code>user_submitted</code>, <code>model_request</code>, <code>model_response</code>, <code>tool_started</code>, <code>tool_finished</code>, <code>run_completed</code>, <code>run_failed</code>. TraceWriter ghi mỗi event thành một dòng JSONL trong <code>traces/</code>. API key, headers và env không được ghi.'},
+ {i:'⚙️',t:'Config và prompts',f:'config.py, prompts.py',d:'<code>config.py</code>: <code>MODEL_CALL_LIMIT=8</code>, <code>TOOL_CALL_LIMIT=20</code>, <code>RECURSION_LIMIT=50</code> và <code>load_settings()</code> đọc <code>.env</code>. <code>prompts.py</code>: CAPABILITY_PROMPT có thêm hai dòng về bash (cwd, timeout 10 giây, cách đọc <code>exit_code</code>, <code>stdout</code>, <code>stderr</code>, <code>timed_out</code>).'},
+];
+function renderArch(){
+  const mk=(n,idx,g)=>`<div class="node ${n.nw?'new':''}" data-g="${g}" data-i="${idx}">${n.nw?'<span class="newb">MỚI</span>':''}<span class="ico">${n.i}</span>${n.t}<small>${n.f}</small></div>`;
+  $('#arch').innerHTML=NODES.map((n,i)=>mk(n,i,'n')).join('')+'<div class="flowline">Hàng trên là luồng xử lý chính từ người dùng đến model. Hàng dưới là các thành phần bổ sung.</div>'+SIDE.map((n,i)=>mk(n,i,'s')).join('');
+  $$('#arch .node').forEach(el=>el.onclick=()=>pick(el));
+  pick($('#arch .node[data-g="s"][data-i="0"]'));
+}
+function pick(el){
+  $$('#arch .node').forEach(n=>n.classList.remove('on')); el.classList.add('on');
+  const n=(el.dataset.g==='n'?NODES:SIDE)[+el.dataset.i];
+  $('#archDetail').innerHTML=`<h4>${n.i} ${n.t} <code>${n.f}</code></h4><div>${n.d}</div>`;
+}
+renderArch();
+
+/* ---------- 2. tools ---------- */
+const BASH_DOC=`Chạy một lệnh bash ngắn (bash -c) trong thư mục workspace và trả về JSON.
+
+cwd là workspace, nên dùng đường dẫn tương đối như data/tasks.csv. \`python\` là Python của project.
+Timeout 10 giây; không chạy tiến trình nền hay lệnh tương tác.
+Kết quả: {"ok": true, "exit_code": 0, "stdout": "...", "stderr": "", "timed_out": false}.
+ok=true nghĩa là lệnh đã chạy xong và có kết quả; exit_code khác 0 nghĩa là chương trình báo lỗi.
+Timeout: {"ok": false, "exit_code": null, "timed_out": true, ...} kèm output một phần nếu có.`;
+const READ_DOC=`Đọc một file văn bản UTF-8 trong workspace và trả về JSON.
+
+path là đường dẫn tương đối workspace, ví dụ: data/weekly_notes.md, output/summary.md.
+Dùng để đọc dữ liệu đầu vào, file SKILL.md của một skill và các file reference trong thư mục skill.
+Thành công: {"ok": true, "path": ..., "content": ...}. Lỗi: {"ok": false, "error": {"code": ..., "message": ...}}.`;
+const WRITE_DOC=`Ghi nội dung văn bản UTF-8 vào một file dưới output/ của workspace và trả về JSON.
+
+path là đường dẫn tương đối workspace và phải bắt đầu bằng output/, ví dụ output/summary.md.
+Tự tạo thư mục con. Ghi đè nếu file đã tồn tại.
+Thành công: {"ok": true, "path": ..., "bytes": ..., "status": "created" | "updated"}. Lỗi: {"ok": false, "error": {...}}.`;
+const TL=[
+ {n:'read_file',nw:0,sig:'read_file(path: str)',doc:READ_DOC,args:[['path','str','Đường dẫn tương đối workspace']],
+  ok:'{"ok": true, "path": "data/weekly_notes.md", "content": "..."}',
+  errs:[['INVALID_PATH','Path rỗng'],['PATH_OUTSIDE_WORKSPACE','Đường dẫn tuyệt đối, bắt đầu bằng ~ hoặc thoát ra ngoài workspace (kể cả qua symlink)'],['FILE_NOT_FOUND','Không có file'],['IS_A_DIRECTORY','Path là thư mục'],['FILE_TOO_LARGE','Quá 200.000 bytes, không đọc một phần'],['NOT_UTF8_TEXT','Không phải văn bản UTF-8']],
+  props:{path:{type:'string'}},req:['path']},
+ {n:'write_file',nw:0,sig:'write_file(path: str, content: str)',doc:WRITE_DOC,args:[['path','str','Bắt đầu bằng output/'],['content','str','Nội dung UTF-8']],
+  ok:'{"ok": true, "path": "output/summary.md", "bytes": 9, "status": "created"}',
+  errs:[['INVALID_PATH','Path rỗng'],['PATH_OUTSIDE_WORKSPACE','Đường dẫn tuyệt đối, bắt đầu bằng ~ hoặc thoát ra ngoài workspace'],['PATH_OUTSIDE_OUTPUT','Không nằm dưới output/ (kể cả chính thư mục output)'],['IS_A_DIRECTORY','Path đích là thư mục']],
+  props:{path:{type:'string'},content:{type:'string'}},req:['path','content']},
+ {n:'bash',nw:1,sig:'bash(command: str)',doc:BASH_DOC,args:[['command','str','Một lệnh để chạy bằng bash -c trong workspace']],
+  ok:'{"ok": true, "exit_code": 0, "stdout": "...", "stderr": "", "timed_out": false, "truncated": false}',
+  errs:[['EMPTY_COMMAND','Command rỗng hoặc chỉ có khoảng trắng'],['TIMEOUT','Chạy quá 10 giây, tiến trình bị dừng']],
+  props:{command:{type:'string'}},req:['command']},
+];
+let tsel=2;
+function renderTool(){
+  $('#toolPick').innerHTML=TL.map((t,i)=>`<button class="${i===tsel?'sel':''}" data-i="${i}"><code style="background:transparent">${t.n}</code>${t.nw?' <span class="tag" style="background:var(--orange);color:#fff">mới</span>':''}</button>`).join('');
+  $$('#toolPick button').forEach(b=>b.onclick=()=>{tsel=+b.dataset.i;renderTool()});
+  const t=TL[tsel];
+  $('#toolInfo').innerHTML=`<h3 style="margin-top:0"><code>${t.sig}</code> <span class="tag real">dữ liệu thật</span></h3>
+   <table class="kv"><tr><th>Tham số</th><th>Kiểu</th><th>Ý nghĩa</th></tr>${t.args.map(a=>`<tr><td>${a[0]}</td><td>${a[1]}</td><td>${a[2]}</td></tr>`).join('')}</table>
+   <h4 style="margin:.8rem 0 .2rem">Kết quả thành công</h4><pre>${esc(t.ok)}</pre>
+   <h4 style="margin:.8rem 0 .2rem">Mã lỗi (<code>error.code</code>)</h4>
+   <table class="kv">${t.errs.map(e=>`<tr><td>${e[0]}</td><td>${e[1]}</td></tr>`).join('')}</table>
+   <details><summary>Docstring mà model đọc</summary><pre>${esc(t.doc)}</pre></details>`;
+  $('#toolSchema').textContent=JSON.stringify({name:t.n,description:t.doc.split('\n')[0]+' ...',parameters:{type:'object',properties:t.props,required:t.req}},null,2);
+}
+renderTool();
+
+/* ---------- 3. simulator ---------- */
+const SCEN=[
+ {label:'python --version',user:'Chạy python --version và cho biết kết quả.',
+  calls:[{cmd:'python --version',res:runBash({stdout:'Python 3.x.y\n',code:0})}],
+  ans:'Tôi đã chạy python --version. Lệnh kết thúc với exit_code 0 và stdout là Python 3.x.y. Bạn hãy mở khung tool call để xem command và kết quả đầy đủ.',
+  note:'Prompt thử số 1 trong README. Phiên bản Python cụ thể phụ thuộc <code>.venv</code> của máy chạy, test chỉ kiểm tra stdout bắt đầu bằng <code>Python 3.</code>, nên <code>3.x.y</code> là giá trị giữ chỗ.'},
+ {label:'Lệnh exit code 1',user:'Chạy một lệnh Python in Lỗi thử nghiệm ra stderr rồi kết thúc với exit code 1. Giải thích kết quả.',
+  calls:[{cmd:PY_ERR_CMD,res:runBash({stderr:'Lỗi thử nghiệm\n',code:1})}],
+  ans:'Tôi đã chạy lệnh. Chương trình in "Lỗi thử nghiệm" ra stderr rồi kết thúc với exit_code 1. Tool vẫn chạy xong (ok: true); exit_code 1 do chính chương trình Python báo lỗi.',
+  note:'Prompt thử số 2 trong README. Command và result khớp với <code>tests/test_bash.py</code>. README nêu rõ kỳ vọng: exit 1 vẫn là tool result đọc được (<code>ok: true</code>, <code>exit_code: 1</code>).'},
+ {label:'Lệnh bị timeout',user:'Chạy lệnh sleep 30 rồi cho biết kết quả.',
+  calls:[{cmd:'sleep 30',res:runBash({timeout:1})}],
+  ans:'Tôi đã chạy sleep 30 nhưng lệnh bị dừng sau 10 giây (timed_out: true) nên không có exit_code. Bạn hãy dùng lệnh ngắn hơn hoặc chia nhỏ công việc.',
+  note:'Kịch bản tự đặt để minh hoạ nhánh timeout của <code>_run_bash</code>. Cấu trúc result lấy từ code. Chú ý: tool vẫn trả về bình thường nên status của ToolMessage là <code>success</code>, nhưng UI hiện badge lỗi vì <code>ok</code> là <code>false</code>.'},
+ {label:'Hai lệnh trong một response',user:'Chạy python --version, sau đó chạy một lệnh Python thoát với exit code 1.',
+  calls:[{cmd:'python --version',res:runBash({stdout:'Python 3.x.y\n',code:0})},{cmd:PY_ERR_CMD,res:runBash({stderr:'Lỗi thử nghiệm\n',code:1})}],
+  ans:'Tôi đã chạy hai lệnh. Lệnh 1 có exit_code 0 và in Python 3.x.y. Lệnh 2 có exit_code 1 và stderr là Lỗi thử nghiệm.',
+  note:'Theo <code>test_bash_trace_has_command_output_and_exit_code</code>: một model response có thể yêu cầu nhiều tool call, mỗi call có ID riêng. Trang này xếp các event tuần tự cho dễ đọc; thứ tự thật giữa các tool call chạy song song <span class="tag sim">suy luận</span> không cố định.'},
+];
+const TOOL_NAMES='read_file, write_file, bash';
+function cut(s,n=44){return s.length>n?s.slice(0,n)+'…':s}
+function mkEvents(s){
+  const E=[],n=s.calls.length;
+  E.push({t:'user_submitted',kind:'user',d:`text="${cut(s.user)}", tools=[${TOOL_NAMES}], skills=[weekly-report]`});
+  E.push({t:'model_request',kind:'req',mc:1,d:`model_call_index=1, message_count=1, tools=3`});
+  E.push({t:'model_response',kind:'resp',mc:1,tc:n,d:`tool_calls_requested=[${s.calls.map((c,i)=>`call_${i+1}:bash`).join(', ')}]`});
+  s.calls.forEach((c,i)=>{
+    E.push({t:'tool_started',kind:'ts',i,d:`tool_call_id=call_${i+1}, tool_name=bash`});
+    E.push({t:'tool_finished',kind:'tf',i,d:`tool_call_id=call_${i+1}, status=success, ok=${c.res.ok}, exit_code=${c.res.exit_code}`});
+  });
+  E.push({t:'model_request',kind:'req',mc:2,d:`model_call_index=2, message_count=${2+n}, tools=3`});
+  E.push({t:'model_response',kind:'resp',mc:2,tc:0,d:'tool_calls_requested=[]'});
+  E.push({t:'run_completed',kind:'done',d:`answer_chars=${s.ans.length}`});
+  return E;
+}
+function snapOf(s,mc){
+  const msgs=[{role:'user',content:s.user}];
+  if(mc>=2){
+    msgs.push({role:'assistant',content:'',tool_calls:s.calls.map((c,i)=>({id:`call_${i+1}`,name:'bash',args:{command:c.cmd}}))});
+    s.calls.forEach((c,i)=>msgs.push({role:'tool',name:'bash',tool_call_id:`call_${i+1}`,content:py(c.res)}));
+  }
+  let chars=0;
+  msgs.forEach(m=>{chars+=m.content.length;(m.tool_calls||[]).forEach(c=>chars+=py(c.args).length)});
+  return {model_call_index:mc,message_count:msgs.length,system_prompt_chars:SYSTEM.length,message_chars:chars,tools:['read_file','write_file','bash'],usage:null,messages:msgs};
+}
+const STEPHELP={
+ user:'<b>user_submitted.</b> <code>Observer.start_turn()</code> tăng <code>chat_turn</code> và reset counters. UI ghi event này vào file trace của lượt.',
+ req:'<b>model_request.</b> <code>ObserverMiddleware.wrap_model_call</code> chụp system prompt, messages và schema của 3 tool ngay trước khi gọi model. Counter "Model call" tăng ở đây.',
+ respTool:'<b>model_response.</b> Model trả về AIMessage có <code>tool_calls</code> thay vì câu trả lời. Vòng lặp sẽ chạy tool rồi gọi model lần nữa.',
+ respEnd:'<b>model_response.</b> Model trả lời bằng văn bản, không yêu cầu tool nào, nên vòng lặp kết thúc.',
+ ts:'<b>tool_started.</b> <code>wrap_tool_call</code> phát event kèm <code>arguments</code>. Counter "Tool calls" tăng và badge chuyển sang "Đang chạy tool". Lúc này <code>_run_bash</code> chạy <code>bash -c</code> trong workspace.',
+ tf:'<b>tool_finished.</b> Tool trả một chuỗi JSON, được đóng gói thành ToolMessage với status <code>success</code>, kể cả khi <code>exit_code</code> khác 0 hoặc lệnh bị timeout. Chuỗi này sẽ vào history ở model call kế tiếp.',
+ done:'<b>run_completed.</b> <code>app.py</code> lưu toàn bộ messages của lượt (gồm assistant tool_calls và tool result) vào <code>model_history</code>, rồi ghi event cuối.'
+};
+let sc=0,step=0,timer=null,EV=mkEvents(SCEN[0]);
+function renderSim(){
+  const s=SCEN[sc],k=step,N=EV.length,done=EV.slice(0,k);
+  $('#presets').innerHTML=SCEN.map((x,i)=>`<button class="${i===sc?'sel':''}" data-i="${i}">${esc(x.label)} <span class="tag sim">minh hoạ</span></button>`).join('');
+  $$('#presets button').forEach(b=>b.onclick=()=>{sc=+b.dataset.i;EV=mkEvents(SCEN[sc]);step=0;stop();renderSim()});
+  $('#simNote').innerHTML=s.note+' Không có file trace thật trong <code>traces/</code>, nên toàn bộ kịch bản là minh hoạ; câu trả lời của model là ví dụ.';
+  $('#timeline').innerHTML=EV.map((e,i)=>`<div class="tl ${k>i?'done':''} ${k===i?'cur':''}" data-i="${i}"><b>${i+1}. ${e.t}</b>${e.kind==='ts'||e.kind==='tf'?'call_'+(e.i+1):(e.mc?'model call #'+e.mc:'')}</div>`).join('');
+  $$('#timeline .tl').forEach(el=>el.onclick=()=>{step=+el.dataset.i+1;stop();renderSim()});
+  const last=done[done.length-1];
+  $('#stepNote').innerHTML=last?STEPHELP[last.kind==='resp'?(last.tc?'respTool':'respEnd'):last.kind]:'Bấm "Bước tiếp" để bắt đầu.';
+  // chat
+  let chat='';
+  if(k>=1)chat+=`<div class="msg u">${esc(s.user)}</div>`;
+  const finished=done.some(e=>e.kind==='done');
+  if(k>=1&&!finished)chat+=`<div class="msg a pending">${last.kind==='ts'||last.kind==='tf'?'Đang chạy tool…':'Đang gọi model…'}</div>`;
+  if(finished)chat+=`<div class="msg a">${esc(s.ans)}</div>`;
+  $('#simChat').innerHTML=chat||'<span class="invisible-hint">Chưa có tin nhắn.</span>';
+  const mcN=done.filter(e=>e.kind==='req').length,tcN=done.filter(e=>e.kind==='ts').length;
+  $('#sumModel').textContent=mcN;$('#sumTool').textContent=tcN;
+  // steps
+  let st='';
+  const respSeen=m=>done.some(e=>e.kind==='resp'&&e.mc===m);
+  if(mcN>=1)st+=`<div><b>Model call #1</b>: ${respSeen(1)?`yêu cầu ${s.calls.length} tool call.`:'đang chạy…'}</div>`;
+  s.calls.forEach((c,i)=>{
+    const started=done.some(e=>e.kind==='ts'&&e.i===i),fin=done.some(e=>e.kind==='tf'&&e.i===i);
+    if(!started)return;
+    const failed=fin&&c.res.ok===false;
+    st+=`<div class="frame"><div class="fh"><b>bash</b> <code>call_${i+1}</code>${fin?`<span class="badge sm ${failed?'err':'done'}">${failed?'lỗi':'ok'}</span>`:'<span class="badge sm model">đang chạy</span>'}</div>
+      <pre>${esc(c.cmd)}</pre>${fin?`<pre>${esc(JSON.stringify(abbr(c.res),null,2))}</pre>${failed?'<span class="invisible-hint">Tool trả lỗi; lỗi được gửi lại model dưới dạng tool result.</span>':''}`:''}</div>`;
+  });
+  if(mcN>=2)st+=`<div><b>Model call #2</b>: ${respSeen(2)?'trả lời, không yêu cầu tool.':'đang chạy…'}</div>`;
+  $('#simSteps').innerHTML=st||'Chưa có bước nào.';
+  // state
+  let status='Sẵn sàng',cls='ready';
+  done.forEach(e=>{if(e.kind==='req'){status='Đang gọi model';cls='model'}else if(e.kind==='ts'){status='Đang chạy tool';cls='model'}else if(e.kind==='done'){status='Hoàn tất';cls='done'}});
+  $('#simBadge').textContent=status;$('#simBadge').className='badge '+cls;
+  const set=(id,label,v,hl)=>{const e=$(id);e.innerHTML=`${label}<b>${v}</b>`;e.classList.toggle('hl',!!hl)};
+  set('#cTurn','Lượt chat',k?1:0,false);set('#cModel','Model call',mcN,last&&last.kind==='req');set('#cSeq','Bước sự kiện',k,k>0);set('#cTool','Tool calls',tcN,last&&last.kind==='ts');
+  $('#simLog').innerHTML=done.length?done.map((e,i)=>`<div class="ev ${i===done.length-1?'new':''}"><span class="s">#${i+1}</span><b>${e.t}</b><span>${esc(e.d)}</span></div>`).join(''):'<span class="invisible-hint">Chưa có event.</span>';
+  const reqs=done.filter(e=>e.kind==='req');
+  if(reqs.length){
+    const sn=snapOf(s,reqs[reqs.length-1].mc);
+    $('#simSnap').innerHTML=`<div class="note">Snapshot ở lớp LangChain, không phải payload gửi tới provider. Công thức <code>message_chars</code> theo <code>content_chars()</code> trong <code>observer.py</code>; <code>system_prompt_chars</code> tính từ prompt thật trong <code>prompts.py</code>.</div><pre>${esc(JSON.stringify(sn,null,2))}</pre><details><summary>system_prompt (${SYSTEM.length} ký tự)</summary><pre>${esc(SYSTEM)}</pre></details>`;
+  } else $('#simSnap').innerHTML='<span class="invisible-hint">Chưa có event model_request.</span>';
+  $('#bPrev').disabled=k===0;$('#bNext').disabled=k===N;
+  $('#bAuto').textContent=timer?'Dừng':'Tự chạy';
+}
+function stop(){if(timer){clearInterval(timer);timer=null}}
+$('#bNext').onclick=()=>{if(step<EV.length){step++;stop();renderSim()}};
+$('#bPrev').onclick=()=>{if(step>0){step--;stop();renderSim()}};
+$('#bReset').onclick=()=>{step=0;stop();renderSim()};
+$('#bAuto').onclick=()=>{
+  if(timer){stop();renderSim();return}
+  if(step>=EV.length)step=0;
+  timer=setInterval(()=>{if(step<EV.length){step++;renderSim()}else{stop();renderSim()}},1000);renderSim();
+};
+renderSim();
+
+/* ---------- 4. bash results ---------- */
+const BIG=30001;
+const CMDS=[
+ {c:'pwd',p:{stdout:'<đường dẫn tuyệt đối của workspace>\n',code:0},tag:'real',say:'Tôi đã chạy pwd. Thư mục làm việc là thư mục workspace của project. Bạn hãy dùng đường dẫn tương đối như data/weekly_notes.md.',src:'Test <code>test_cwd_is_workspace</code> xác nhận cwd là workspace. Đường dẫn cụ thể phụ thuộc máy nên là giá trị giữ chỗ.'},
+ {c:'ls data',p:{stdout:'weekly_notes.md\n',code:0},tag:'real',say:'Tôi đã chạy ls data. Thư mục data có một file là weekly_notes.md.',src:'<code>workspace/data/</code> hiện chỉ có <code>weekly_notes.md</code>. Stage này không có tool liệt kê thư mục, nên bash đảm nhiệm việc đó.'},
+ {c:'cat data/weekly_notes.md | head -1',p:{stdout:'# Ghi chú công việc tuần 40 (dữ liệu giả cho lab)\n',code:0},tag:'real',say:'Tôi đã đọc dòng đầu của data/weekly_notes.md: "# Ghi chú công việc tuần 40 (dữ liệu giả cho lab)".',src:'Lệnh này có trong <code>test_tool_runs_in_project_workspace</code>. Dòng đầu lấy từ <code>workspace/data/weekly_notes.md</code>.'},
+ {c:'python --version',p:{stdout:'Python 3.x.y\n',code:0},tag:'sim',say:'Tôi đã chạy python --version. Kết quả là Python 3.x.y với exit_code 0.',src:'<code>python</code> trỏ vào <code>.venv</code> của project nhờ PATH trong <code>minimal_env()</code>. Số phiên bản là giá trị giữ chỗ.'},
+ {c:PY_ERR_CMD,p:{stderr:'Lỗi thử nghiệm\n',code:1},tag:'real',say:'Tôi đã chạy lệnh. Chương trình in "Lỗi thử nghiệm" ra stderr và kết thúc với exit_code 1. Bạn hãy xem stderr để biết nguyên nhân.',src:'Kết quả khớp chính xác assert trong <code>test_exit_1_with_stderr_is_readable_result</code>.'},
+ {c:'exit 3',p:{code:3},tag:'sim',say:'Tôi đã chạy exit 3. Lệnh không in gì và kết thúc với exit_code 3. Bạn hãy cho tôi biết mã 3 có nghĩa gì với chương trình của bạn.',src:'Hành vi suy ra từ code: <code>returncode</code> khác 0 vẫn đi vào nhánh <code>ok: true</code>.'},
+ {c:'cat',p:{code:0},tag:'sim',say:'Tôi đã chạy cat không đối số. Stdin của tool bị đóng nên cat đọc ngay EOF, kết thúc với exit_code 0 và không có output.',src:'<code>stdin=subprocess.DEVNULL</code>: lệnh tương tác không chờ được input từ người dùng.'},
+ {c:'python -c "print(\'x\' * 30000)"',p:{stdout:'x'.repeat(30000)+'\n',code:0},tag:'sim',say:'Tôi chỉ nhận được 20.000 ký tự đầu vì kết quả bị cắt (truncated: true, tổng 30001 ký tự). Bạn hãy cho tôi lọc output nhỏ hơn bằng head hoặc grep.',src:'<code>_clip()</code> giữ 20.000 ký tự đầu và nối chú thích. Trang này rút gọn chuỗi dài khi hiển thị.'},
+ {c:'sleep 30',p:{timeout:1},tag:'sim',say:'Tôi đã chạy sleep 30 nhưng lệnh bị dừng sau 10 giây, nên không có exit_code. Bạn hãy dùng lệnh ngắn hơn.',src:'Nhánh <code>subprocess.TimeoutExpired</code>.'},
+ {c:'echo bắt-đầu; sleep 15; echo không-tới',p:{timeout:1,stdout:'bắt-đầu\n'},tag:'sim',say:'Tôi đã chạy lệnh nhưng nó bị dừng sau 10 giây. Trước đó stdout chỉ có "bắt-đầu"; dòng "không-tới" không bao giờ chạy. Bạn hãy rút ngắn lệnh.',src:'Dạng giống <code>test_timeout_kills_process_and_keeps_partial_output</code> (test dùng timeout 0,5 giây, trang này dùng 10 giây mặc định). Output một phần được giữ lại.'},
+ {c:'   ',p:{empty:1},tag:'real',say:'Tôi chưa chạy lệnh nào vì command rỗng (EMPTY_COMMAND). Bạn hãy cho tôi lệnh cụ thể.',src:'Nhánh đầu của <code>_run_bash</code>: <code>if not command.strip()</code>.'},
+];
+const FLOW=['Kiểm tra command rỗng','Popen bash -c (cwd, env, stdin đóng)','communicate(timeout=10)','Hết giờ: killpg SIGKILL, lấy output một phần','Chạy xong: lấy returncode','_clip stdout và stderr, trả dict','json.dumps ở tool bash'];
+const FIELDS={
+ ok:'true: lệnh đã chạy xong và có kết quả. false: lệnh không chạy (EMPTY_COMMAND) hoặc bị dừng (TIMEOUT).',
+ exit_code:'Mã thoát của bash. 0 là thành công, khác 0 là chương trình báo lỗi. null khi không có mã: command rỗng hoặc timeout.',
+ stdout:'Output chuẩn, UTF-8, ký tự lỗi thay bằng ký tự thay thế. Tối đa 20.000 ký tự rồi bị cắt.',
+ stderr:'Output lỗi, cùng quy tắc với stdout.',
+ timed_out:'true khi lệnh chạy quá 10 giây và bị kill.',
+ truncated:'true nếu stdout hoặc stderr bị cắt. Không có trường này ở nhánh EMPTY_COMMAND.',
+ error:'Chỉ có khi ok=false: object gồm code và message.'
+};
+let csel=4;
+function renderCmd(){
+  $('#cmdPick').innerHTML=CMDS.map((x,i)=>`<button class="${i===csel?'sel':''}" data-i="${i}">${x.c.trim()?esc(cut(x.c,34)):'(command rỗng)'}</button>`).join('');
+  $$('#cmdPick button').forEach(b=>b.onclick=()=>{csel=+b.dataset.i;renderCmd()});
+  const x=CMDS[csel],res=runBash(x.p);
+  const act=x.p.empty?[0]:x.p.timeout?[0,1,2,3,5,6]:[0,1,2,4,5,6];
+  $('#flow').innerHTML=FLOW.map((t,i)=>`<div class="tl ${act.includes(i)?'done':''}" style="${act.includes(i)?'':'opacity:.45'}"><b>${i+1}</b>${t}</div>`).join('');
+  $('#resJson').textContent=JSON.stringify(abbr(res),null,2);
+  const failed=res.ok===false;
+  $('#resBadge').textContent=failed?'lỗi':'ok';$('#resBadge').className='badge '+(failed?'err':'done');
+  $('#resBadgeWhy').innerHTML=failed?'UI đặt badge "lỗi" vì <code>result.ok</code> là <code>false</code> (xem <code>app.py</code>). ToolMessage vẫn là <code>success</code> vì tool trả về bình thường.':(res.exit_code?`Badge vẫn là "ok" dù <code>exit_code</code> là ${res.exit_code}: <code>ok: true</code> chỉ có nghĩa lệnh đã chạy xong. Model phải đọc <code>exit_code</code>.`:'Lệnh chạy xong với exit_code 0.');
+  $('#resTable').innerHTML='<tr><th>Trường</th><th>Giá trị</th><th>Ý nghĩa</th></tr>'+Object.keys(FIELDS).filter(f=>f in res).map(f=>{
+    let v=res[f];v=typeof v==='object'&&v!==null?v.code:(typeof v==='string'?(v.length>40?v.slice(0,25)+'… ('+v.length+' ký tự)':JSON.stringify(v)):String(v));
+    const hit=(f==='exit_code'&&res.exit_code)||(f==='timed_out'&&res.timed_out)||(f==='truncated'&&res.truncated)||(f==='error');
+    return `<tr class="${hit?'hit':''}"><td>${f}</td><td class="mono-s">${esc(v)}</td><td>${FIELDS[f]}</td></tr>`;
+  }).join('');
+  $('#resSay').innerHTML=`<b>Câu trả lời mẫu của model</b> <span class="tag sim">minh hoạ</span><br>${esc(x.say)}<br><br><span class="tag ${x.tag==='real'?'real':'sim'}">${x.tag==='real'?'dữ liệu thật':'minh hoạ'}</span> ${x.src}`;
+}
+renderCmd();
+
+/* ---------- 5. limits and sandbox ---------- */
+const MECH=[
+ ['cwd là workspace',1,'<code>Popen(cwd=workspace)</code>. Test <code>test_cwd_is_workspace</code>.'],
+ ['Không login shell, không đọc profile',1,'<code>["bash", "-c", command]</code>.'],
+ ['Env tối thiểu, không có API key',1,'<code>minimal_env()</code>: 6 biến. Test <code>test_credentials_not_in_subprocess_env</code>.'],
+ ['Stdin đóng',1,'<code>stdin=subprocess.DEVNULL</code>. Lệnh không đọc được input tương tác.'],
+ ['Timeout 10 giây',1,'<code>process.communicate(timeout=10)</code>, giữ output một phần.'],
+ ['Kill cả process group khi timeout',1,'<code>start_new_session=True</code> và <code>os.killpg(pid, SIGKILL)</code>. Tiến trình con cũng bị dừng.'],
+ ['Cắt output 20.000 ký tự mỗi stream',1,'<code>_clip()</code>, thêm chú thích <code>…[đã cắt, tổng N ký tự]</code>.'],
+ ['Bỏ qua byte UTF-8 sai',1,'<code>errors="replace"</code>.'],
+ ['Kiểm tra path như read_file và write_file',0,'README: path check không áp dụng cho bash. Lệnh đọc và ghi được ngoài workspace.'],
+ ['Allowlist hoặc blocklist lệnh',0,'Không có đoạn code lọc lệnh trong <code>tools/bash.py</code>. Mọi chuỗi non-empty đều được chạy.'],
+ ['Giới hạn CPU, RAM, network, số tiến trình',0,'Không có trong code. Chỉ có timeout.'],
+ ['Cô lập user hoặc container',0,'Lệnh chạy với quyền của user chạy app (README).'],
+];
+$('#mechTable').innerHTML='<tr><th>Cơ chế</th><th>Code có áp dụng</th><th>Chi tiết</th></tr>'+MECH.map(m=>`<tr><td>${m[0]}</td><td><span class="tag ${m[1]?'yes':'no'}">${m[1]?'Có':'Không'}</span></td><td>${m[2]}</td></tr>`).join('');
+const ATT=[
+ {l:'Đọc file trong workspace',f:['read_file','data/weekly_notes.md','okc','Thành công: <code>{"ok": true, "path": "data/weekly_notes.md", "content": ...}</code>'],b:['cat data/weekly_notes.md','okc','Chạy xong với exit_code 0, stdout là nội dung file.']},
+ {l:'Đọc ../secret.txt',f:['read_file','../secret.txt','blk','<code>PATH_OUTSIDE_WORKSPACE</code>: "Đường dẫn thoát ra ngoài workspace: ../secret.txt". Có test <code>test_read_traversal_blocked</code>.'],b:['cat ../secret.txt','warn','Không có path check. Lệnh chạy bình thường; kết quả tùy file có tồn tại hay không.']},
+ {l:'Đọc đường dẫn tuyệt đối',f:['read_file','/etc/hosts','blk','<code>PATH_OUTSIDE_WORKSPACE</code>: "Không chấp nhận đường dẫn tuyệt đối". Có test <code>test_read_absolute_path_blocked</code>.'],b:['cat /etc/hosts','warn','Không có path check. Lệnh đọc được file ngoài workspace nếu user chạy app có quyền đọc.']},
+ {l:'Đọc ~/data/weekly_notes.md',f:['read_file','~/data/weekly_notes.md','blk','<code>PATH_OUTSIDE_WORKSPACE</code>: path bắt đầu bằng <code>~</code> bị từ chối.'],b:['cat ~/data/weekly_notes.md','okc','Chạy được. <code>minimal_env()</code> đặt <code>HOME</code> là workspace, nên <code>~</code> trỏ vào workspace chứ không phải home thật. Đường dẫn tuyệt đối tới home thật vẫn đọc được <span class="tag sim">suy luận</span>.']},
+ {l:'Đọc qua symlink trỏ ra ngoài',f:['read_file','data/link-ra-ngoai','blk','<code>PATH_OUTSIDE_WORKSPACE</code>: path được resolve kể cả symlink rồi mới kiểm tra. Có test <code>test_read_symlink_escape_blocked</code>.'],b:['cat data/link-ra-ngoai','warn','Bash đi theo symlink như bình thường, không có bước kiểm tra nào.']},
+ {l:'Ghi output/summary.md',f:['write_file','output/summary.md','okc','Thành công: <code>{"ok": true, "path": "output/summary.md", "bytes": N, "status": "created"}</code>.'],b:['echo "# Tóm tắt" > output/summary.md','okc','Ghi được, nhưng không có <code>bytes</code> và <code>status</code> trong kết quả; model chỉ thấy exit_code 0.']},
+ {l:'Ghi đè data/weekly_notes.md',f:['write_file','data/weekly_notes.md','blk','<code>PATH_OUTSIDE_OUTPUT</code>: chỉ được ghi dưới output/. Có test <code>test_write_outside_output_rejected</code>.'],b:['echo x > data/weekly_notes.md','warn','Không có giới hạn <code>output/</code>. File dữ liệu gốc bị ghi đè. <code>reset_workspace.py</code> khôi phục từ <code>fixtures/</code>.']},
+ {l:'Ghi ra ngoài workspace',f:['write_file','../outside.txt','blk','<code>PATH_OUTSIDE_WORKSPACE</code>.'],b:['echo x > ../outside.txt','warn','Ghi được vào thư mục cha của workspace nếu user chạy app có quyền ghi.']},
+];
+let asel=1;
+function renderAtt(){
+  $('#attPick').innerHTML=ATT.map((a,i)=>`<button class="${i===asel?'sel':''}" data-i="${i}">${a.l}</button>`).join('');
+  $$('#attPick button').forEach(b=>b.onclick=()=>{asel=+b.dataset.i;renderAtt()});
+  const a=ATT[asel];
+  $('#attFile').className='cell '+a.f[2];
+  $('#attFile').innerHTML=`<b>${a.f[0]} <span class="tag real">dữ liệu thật</span></b><code>${esc(a.f[1])}</code><div style="margin-top:.3rem">${a.f[3]}</div>`;
+  $('#attBash').className='cell '+a.b[1];
+  $('#attBash').innerHTML=`<b>bash <span class="tag sim">suy luận</span></b><code>${esc(a.b[0])}</code><div style="margin-top:.3rem">${a.b[2]}</div>`;
+}
+renderAtt();
+function renderTimeout(){
+  const t=+$('#toRange').value,echo=$('#toEcho').checked;$('#toVal').textContent=t;
+  const killed=t>TIMEOUT;
+  $('#toFill').style.width=(Math.min(t,20)/20*100)+'%';$('#toFill').className=killed?'over':'';
+  const part=echo?'stdout giữ lại dòng đã in trước đó':'stdout rỗng';
+  $('#toNote').className='note '+(killed?'bad':'ok');
+  $('#toNote').innerHTML=killed?`<b>Bị dừng ở giây thứ 10.</b> <code>os.killpg(..., SIGKILL)</code> dừng cả process group. Kết quả: <code>ok: false</code>, <code>exit_code: null</code>, <code>timed_out: true</code>, <code>error.code: "TIMEOUT"</code>; ${part}. Phần chạy sau giây thứ 10 không xảy ra.`:`<b>Chạy xong trong giới hạn.</b> <code>ok: true</code>, <code>exit_code: 0</code> (nếu lệnh tự thoát thành công). Vạch đỏ là mốc 10 giây (<code>DEFAULT_TIMEOUT_SECONDS</code>).`;
+}
+$('#toRange').oninput=$('#toEcho').onchange=renderTimeout;renderTimeout();
+function renderClip(){
+  const n=+$('#clRange').value;$('#clVal').textContent=fmtN(n);
+  const [out,tr]=clip('x'.repeat(n));
+  $('#clFill').style.width=Math.min(n,60000)/60000*100+'%';$('#clFill').className=tr?'over':'';
+  $('#clNote').className='note '+(tr?'bad':'ok');
+  $('#clNote').innerHTML=tr?`<b>Bị cắt.</b> <code>truncated: true</code>. Model nhận ${fmtN(MAX_OUT)} ký tự đầu cộng chú thích <code>…[đã cắt, tổng ${fmtN(n)} ký tự]</code>, tổng ${fmtN(out.length)} ký tự. ${fmtN(n-MAX_OUT)} ký tự cuối bị bỏ. Quy tắc áp dụng riêng cho stdout và stderr.`:`<b>Không bị cắt.</b> Model nhận đủ ${fmtN(out.length)} ký tự, <code>truncated: false</code>. Vạch đỏ là mốc ${fmtN(MAX_OUT)} ký tự (<code>MAX_OUTPUT_CHARS</code>).`;
+}
+$('#clRange').oninput=renderClip;renderClip();
+const LANGS=['en_US.UTF-8','vi_VN.utf8','C','(trống)'];let lsel=0;
+function renderEnv5(){
+  $('#langPick').innerHTML='<span>LANG của máy:</span>'+LANGS.map((l,i)=>`<button class="${i===lsel?'sel':''}" data-i="${i}">${l}</button>`).join('');
+  $$('#langPick button').forEach(b=>b.onclick=()=>{lsel=+b.dataset.i;renderEnv5()});
+  const host=LANGS[lsel]==='(trống)'?'':LANGS[lsel],loc=host.toUpperCase().includes('UTF-8')?host:'C.UTF-8';
+  $('#envHost').innerHTML='<tr><th>Biến</th><th>Truyền cho lệnh bash</th></tr>'+[
+    ['OPENAI_API_KEY','Không'],['MODEL_NAME','Không'],['OPENAI_BASE_URL','Không'],['PATH của máy','Không, thay bằng PATH mới'],['HOME của máy','Không, thay bằng đường dẫn workspace'],
+    ['LANG='+LANGS[lsel],host.toUpperCase().includes('UTF-8')?'Có, giữ nguyên':'Không, thay bằng C.UTF-8 (chỉ nhận khi chuỗi chứa "UTF-8", không phân biệt hoa thường)'],['Mọi biến khác','Không']
+  ].map(r=>`<tr><td class="mono-s">${esc(r[0])}</td><td><span class="tag ${r[1].startsWith('Có')?'yes':'no'}">${esc(r[1])}</span></td></tr>`).join('');
+  $('#envSub').innerHTML=[['PATH','&lt;thư mục bin của venv&gt;:/usr/local/bin:/usr/bin:/bin'],['HOME','&lt;đường dẫn workspace&gt;'],['LANG',loc],['LC_ALL',loc],['PYTHONIOENCODING','utf-8'],['PYTHONDONTWRITEBYTECODE','1']].map(r=>`<tr><td>${r[0]}</td><td class="mono-s">${r[1]}</td></tr>`).join('');
+}
+renderEnv5();
+
+/* ---------- 6. context ---------- */
+function renderCtx(){
+  const b=$('#tBase').checked,c=$('#tCap').checked,s=$('#tSkill').checked;
+  const parts=[];
+  if(b)parts.push(`<span class="hl-base">${esc(BASE)}</span>`);
+  if(c)parts.push(`<span class="hl-cap">${esc(CAP)}</span>`);
+  if(s)parts.push(`<span style="background:#e7dccd">${esc(SKILLBLOCK)}</span>`);
+  $('#promptView').innerHTML=parts.join('\n\n')||'<span class="empty">(system prompt rỗng)</span>';
+  const lens=[b?BASE.length:0,c?CAP.length:0,s?SKILLBLOCK.length:0],n=lens.filter(x=>x).length,tot=lens.reduce((x,y)=>x+y,0)+Math.max(0,n-1)*2;
+  $('#ctxNums').textContent=`BASE ${lens[0]} + CAPABILITY ${lens[1]} + SKILLS ${lens[2]} + ${Math.max(0,n-1)*2} (xuống dòng) = ${tot} ký tự`+(tot===SYSTEM.length?' (đủ cả ba đoạn)':'');
+  $('#ctxNote').innerHTML=c?'CAPABILITY có hai dòng về bash: cwd, timeout 10 giây và cách đọc <code>exit_code</code>, <code>stdout</code>, <code>stderr</code>, <code>timed_out</code>. Đây là chỉ dẫn duy nhất cho model về cách hiểu kết quả bash, ngoài docstring của tool.':'<b>Không có CAPABILITY:</b> model vẫn thấy schema và docstring của bash nhưng không còn dòng dặn "exit_code khác 0 là chương trình báo lỗi; timed_out=true là lệnh bị dừng" <span class="tag sim">suy luận, chưa đo</span>.';
+}
+['#tBase','#tCap','#tSkill'].forEach(i=>$(i).onchange=renderCtx);renderCtx();
+
+const HUSER='Chạy python --version và cho biết kết quả.',HARGS=py({command:'python --version'}).length;
+let HT=[]; // mỗi lượt: ký tự tool result
+function toolChars(n){const [o,t]=clip('x'.repeat(n));return py({ok:true,exit_code:0,stdout:o,stderr:'',timed_out:false,truncated:t}).length}
+function renderHist(){
+  const T=HT.length,perTurn=HT.map(r=>HUSER.length+HARGS+r);
+  const histChars=perTurn.reduce((a,b)=>a+b,0);
+  $('#hTurn').textContent=T;$('#hMsgs').textContent=4*T+1;$('#hChars').textContent=fmtN(histChars+HUSER.length);
+  const u=HUSER.length*(T+1),a=HARGS*T,r=HT.reduce((x,y)=>x+y,0),tot=u+a+r||1;
+  $('#hStack').innerHTML=`<div class="usr" style="width:${u/tot*100}%"></div><div class="arg" style="width:${a/tot*100}%"></div><div class="res" style="width:${r/tot*100}%">${r?'result '+fmtN(r):''}</div>`;
+  let acc=0;const vals=HT.map((r2,i)=>{const v=SYSTEM.length+acc+HUSER.length;acc+=perTurn[i];return v});
+  vals.push(SYSTEM.length+acc+HUSER.length);
+  const mx=Math.max(...vals);
+  $('#hbars').innerHTML=vals.map((v,i)=>`<div class="bar ${i===T?'fail':''}" style="height:${Math.max(14,v/mx*130)}px;${i===T?'opacity:.55':''}"><span>${(v/1000).toFixed(1)}k</span><em>lượt ${i+1}${i===T?' (kế)':''}</em></div>`).join('');
+  $('#hNote').innerHTML=T?`Model call đầu tiên của lượt ${T+1} nhận system prompt (${fmtN(SYSTEM.length)} ký tự, số thật) cộng toàn bộ history của ${T} lượt trước, trong đó có mọi tool result của bash. Số ký tự của câu trả lời cuối mỗi lượt chưa tính vì không có số liệu. Mỗi lượt thêm 4 message: user, assistant gọi tool, tool, assistant trả lời.`:'Bấm "Thêm một lượt có bash" để xem history tăng. Cột đầu là lượt 1 chưa có history. Nếu một lượt bị lỗi, app rollback history về trước lượt đó (README).';
+}
+$('#hRange').oninput=()=>{$('#hOut').textContent=fmtN(+$('#hRange').value)};
+$('#hSend').onclick=()=>{HT.push(toolChars(+$('#hRange').value));renderHist()};
+$('#hNew').onclick=()=>{HT=[];renderHist()};
+renderHist();
+
+/* ---------- 7. loop ---------- */
+function renderLoop(){
+  const R=+$('#loopRange').value,K=+$('#loopKRange').value;$('#loopR').textContent=R;$('#loopK').textContent=K;
+  let mc=0,exec=0,blocked=0,cells='';
+  for(let c=1;c<=8;c++){
+    mc++;
+    if(c<=R){
+      const ex=Math.min(K,20-exec);exec+=ex;blocked+=K-ex;
+      cells+=`<div class="slot ${blocked&&K-ex?'cut':'m'}">🧠<b>#${c}</b>${K} tool${K-ex?`<br>${K-ex} bị chặn`:''}</div>`;
+    } else {cells+=`<div class="slot m">🧠<b>#${c}</b>trả lời</div>`;break}
+  }
+  for(let c=mc+1;c<=8;c++)cells+=`<div class="slot" style="opacity:.4"><b>#${c}</b>chưa dùng</div>`;
+  const cutModel=R>=8;
+  cells+=cutModel?`<div class="slot cut">⛔<b>#9</b>bị chặn</div>`:`<div class="slot" style="opacity:.4"><b>#9</b>không có</div>`;
+  $('#slots').innerHTML=cells;
+  const set=(id,l,v,hl)=>{const e=$(id);e.innerHTML=`${l}<b>${v}</b>`;e.classList.toggle('hl',!!hl)};
+  set('#lcModel','Model call',mc,false);set('#lcTool','Tool call đã chạy',exec,exec>0);set('#lcBlock','Tool call bị chặn',blocked,false);
+  $('#lcBlock').classList.toggle('zero',blocked>0);
+  set('#lcEnd','Kết thúc bởi',cutModel?'giới hạn model':'model trả lời',false);
+  $('#lcEnd').querySelector('b').style.fontSize='1rem';
+  $('#lcMeter').style.width=Math.min(exec,20)/20*100+'%';$('#lcMeter').className=blocked?'over':'';
+  let note;
+  if(R===0)note='Model trả lời ngay ở lần gọi đầu, không dùng tool. Đây là trường hợp câu hỏi không cần đọc file hay chạy lệnh.';
+  else if(cutModel)note=`<b>Chạm MODEL_CALL_LIMIT.</b> Ở cả 8 lần gọi model vẫn yêu cầu tool. Trước lần gọi thứ 9, <code>ModelCallLimitMiddleware</code> kết thúc lượt (<code>exit_behavior="end"</code>) bằng một AIMessage báo vượt giới hạn. Các tool đã chạy vẫn giữ kết quả trong history.`;
+  else note=`${mc} model call: ${R} lần đầu yêu cầu tool, lần cuối trả lời. Mỗi vòng: model yêu cầu tool, app chạy tool, rồi gọi model lại kèm tool result.`;
+  if(blocked)note+=` <b>Chạm TOOL_CALL_LIMIT:</b> chỉ ${exec} tool call chạy. ${blocked} tool call còn lại nhận ToolMessage lỗi <code>"Tool call limit exceeded. Do not make additional tool calls."</code> và model vẫn được gọi tiếp (mặc định <code>exit_behavior="continue"</code> của thư viện).`;
+  $('#loopNote').className='note'+(cutModel||blocked?' bad':' ok');$('#loopNote').innerHTML=note;
+}
+$('#loopRange').oninput=$('#loopKRange').oninput=renderLoop;renderLoop();
+
+/* ---------- 8. bash, files, skills ---------- */
+const TASKS=[
+ ['Đọc SKILL.md của weekly-report','read_file','SKILLS_PROMPT dặn dùng <code>read_file</code>, và Observer chỉ ghi nhận skill đã load khi <code>read_file</code> đọc thành công <code>skills/&lt;tên&gt;/SKILL.md</code>.'],
+ ['Đọc data/weekly_notes.md để tóm tắt','read_file','Có path check, lỗi có cấu trúc (<code>FILE_NOT_FOUND</code>...) và nội dung trả về nguyên vẹn, không bị cắt ở 20.000 ký tự.'],
+ ['Liệt kê các file trong data/','bash','Stage này không có tool liệt kê thư mục. Dùng <code>ls data</code>.'],
+ ['Lưu báo cáo vào output/weekly-report.md','write_file','Chỉ ghi dưới <code>output/</code>, kết quả trả <code>bytes</code> và <code>status</code>. Ghi bằng bash redirect không có các kiểm tra này.'],
+ ['Kiểm tra phiên bản Python của project','bash','<code>python</code> trong bash là Python của <code>.venv</code> nhờ PATH. Chỉ bash chạy được chương trình.'],
+ ['Đếm số dòng của một file','bash','Việc tính toán nhỏ như <code>wc -l data/weekly_notes.md</code> dùng bash, không cần đưa cả file vào context.'],
+];
+let tk=0;
+function renderTask(){
+  $('#taskPick').innerHTML=TASKS.map((t,i)=>`<button class="${i===tk?'sel':''}" data-i="${i}">${t[0]}</button>`).join('');
+  $$('#taskPick button').forEach(b=>b.onclick=()=>{tk=+b.dataset.i;renderTask()});
+  const t=TASKS[tk];$('#taskNote').innerHTML=`<b>Tool phù hợp: <code>${t[1]}</code></b><br>${t[2]}`;
+}
+renderTask();
+let skm=0;
+function renderSkill(){
+  $$('#skillMode button').forEach(b=>b.classList.toggle('sel',+b.dataset.m===skm));
+  if(!skm){
+    $('#skillCall').textContent='read_file(path="skills/weekly-report/SKILL.md")\n# tool result: {"ok": true, "path": "skills/weekly-report/SKILL.md", "content": "..."}';
+    $('#skHist').innerHTML='Nội dung SKILL.md trong history<b>có</b>';$('#skInv').innerHTML='Skill content đã vào history (panel)<b>1</b>';$('#skInv').classList.add('hl');
+    $('#skillNote').className='note ok';$('#skillNote').innerHTML='<code>context_inventory()</code> thấy tool result của <code>read_file</code> có <code>ok: true</code> và path khớp <code>skills/&lt;tên&gt;/SKILL.md</code>. Panel liệt kê skill <code>weekly-report</code> kèm message index và <code>tool_call_id</code>.';
+  } else {
+    $('#skillCall').textContent='bash(command="cat skills/weekly-report/SKILL.md")\n# tool result: {"ok": true, "exit_code": 0, "stdout": "---\\nname: weekly-report ...", ...}';
+    $('#skHist').innerHTML='Nội dung SKILL.md trong history<b>có</b>';$('#skInv').innerHTML='Skill content đã vào history (panel)<b>0</b>';$('#skInv').classList.remove('hl');
+    $('#skillNote').className='note';$('#skillNote').innerHTML='Nội dung vẫn nằm trong tool message của bash nên model đọc được <span class="tag sim">suy luận</span>. Nhưng <code>context_inventory()</code> chỉ tính tool result có <code>name == "read_file"</code>, nên panel hiện 0 skill. Docstring của hàm ghi rõ: chạy script bằng bash không tính. Vì vậy SKILLS_PROMPT dặn dùng <code>read_file</code>.';
+  }
+}
+$$('#skillMode button').forEach(b=>b.onclick=()=>{skm=+b.dataset.m;renderSkill()});renderSkill();
+const SKF=[
+ ['read_file','skills/weekly-report/SKILL.md','Nạp hướng dẫn. Tool result ở lại history cho các lượt sau. Panel tính là skill đã load.'],
+ ['read_file','data/weekly_notes.md','Đọc file nguồn (bước 1 trong SKILL.md). Panel tính là tài nguyên đã đọc. Nếu lỗi, skill dặn báo lỗi và dừng.'],
+ ['read_file','skills/weekly-report/references/report-template.md','Đọc template (bước 2). Path tương đối trong SKILL.md được resolve từ thư mục chứa SKILL.md. Panel tính là tài nguyên đã đọc.'],
+ ['write_file','output/weekly-report.md','Ghi báo cáo (bước 6). Chỉ ghi được dưới output/.'],
+ ['(trả lời)','không tool','Trả đường dẫn file đã ghi và tóm tắt 2 đến 3 dòng (bước 7).'],
+];
+let skf=0;
+function renderSkF(){
+  $('#skFlow').innerHTML=SKF.map((s,i)=>`<div class="tl ${i<skf?'done':''} ${i===skf?'cur':''}" data-i="${i}"><b>${i+1}. ${s[0]}</b>${s[1]}</div>`).join('');
+  $$('#skFlow .tl').forEach(el=>el.onclick=()=>{skf=+el.dataset.i;renderSkF()});
+  $('#skFlowNote').innerHTML=SKF[skf][2]+(skf===4?' Skill này không gọi bash. Stage 04 thêm skill <code>csv-quality</code> có script chạy qua bash (<code>STAGE-DIFFS.md</code>).':'');
+}
+renderSkF();
+
+/* ---------- 9. trace ---------- */
+(function(){
+  const s=SCEN[1],c=s.calls[0],argsChars=py({command:c.cmd}).length,toolContent=py(c.res);
+  const tools3=[{name:'read_file',description:'…',parameters:'…'},{name:'write_file',description:'…',parameters:'…'},{name:'bash',description:'…',parameters:'…'}];
+  const base={project_name:'stage-03-bash',conversation_id:'<id>',run_id:'<id>',chat_turn:1};
+  window.JL=[
+   {t:'user_submitted',raw:{...base,sequence:1,type:'user_submitted',timestamp:'<iso>',text:s.user,tools:['read_file','write_file','bash'],skills:[{name:'weekly-report',description:'…',location:'skills/weekly-report/SKILL.md'}]},
+    d:'Observer bắt đầu lượt. <code>tools</code> liệt kê 3 tool, <code>skills</code> là metadata từ <code>capabilities()</code> (name, description, location). Chưa có nội dung SKILL.md.'},
+   {t:'model_request',raw:{...base,sequence:2,type:'model_request',timestamp:'<iso>',model_call_index:1,snapshot:{model_name:'<MODEL_NAME>',system_prompt:`(${SYSTEM.length} ký tự)`,messages:[{role:'user',content:s.user}],tools:tools3,message_count:1,system_prompt_chars:SYSTEM.length,message_chars:s.user.length,usage:null}},
+    d:`Snapshot chụp ngay trước khi gọi model: tools gồm 3 schema (đã rút gọn ở đây), <code>system_prompt_chars=${SYSTEM.length}</code> tính từ prompt thật. <code>usage</code> còn null vì model chưa trả lời.`},
+   {t:'model_response',raw:{...base,sequence:3,type:'model_response',timestamp:'<iso>',model_call_index:1,elapsed_ms:'<ms>',tool_calls_requested:[{id:'call_1',name:'bash'}],usage:'<usage hoặc null>'},
+    d:'<code>tool_calls_requested</code> không rỗng nghĩa là model chưa trả lời mà yêu cầu chạy tool. Trace chỉ ghi <code>id</code> và <code>name</code>; arguments nằm ở event <code>tool_started</code>. <code>id</code> <code>call_1</code> là ví dụ.'},
+   {t:'tool_started',raw:{...base,sequence:4,type:'tool_started',timestamp:'<iso>',tool_call_id:'call_1',tool_name:'bash',arguments:{command:c.cmd}},
+    d:'Ghi lệnh bash chính xác như model yêu cầu. Đây là chỗ để kiểm tra model có chạy đúng lệnh không trước khi xem kết quả.'},
+   {t:'tool_finished',raw:{...base,sequence:5,type:'tool_finished',timestamp:'<iso>',tool_call_id:'call_1',tool_name:'bash',elapsed_ms:'<ms>',status:'success',result:c.res},
+    d:'<code>result</code> là JSON của tool đã được parse. <code>status</code> là <code>success</code> dù <code>exit_code</code> là 1: với bash, exit code khác 0 vẫn là tool result đọc được (test <code>test_bash_trace_has_command_output_and_exit_code</code>). Event này chỉ đổi status thành <code>exception</code> khi tool ném exception.'},
+   {t:'model_request',raw:{...base,sequence:6,type:'model_request',timestamp:'<iso>',model_call_index:2,snapshot:{model_name:'<MODEL_NAME>',system_prompt:`(${SYSTEM.length} ký tự)`,messages:[{role:'user',content:s.user},{role:'assistant',content:'',tool_calls:[{id:'call_1',name:'bash',args:{command:c.cmd}}]},{role:'tool',name:'bash',tool_call_id:'call_1',content:toolContent}],tools:tools3,message_count:3,system_prompt_chars:SYSTEM.length,message_chars:s.user.length+argsChars+toolContent.length,usage:null}},
+    d:`Model call thứ hai nhận thêm hai message: assistant với <code>tool_calls</code> và tool với kết quả bash. <code>message_chars=${s.user.length+argsChars+toolContent.length}</code> tính theo công thức của <code>content_chars()</code> (content cộng độ dài JSON của args).`},
+   {t:'model_response',raw:{...base,sequence:7,type:'model_response',timestamp:'<iso>',model_call_index:2,elapsed_ms:'<ms>',tool_calls_requested:[],usage:'<usage hoặc null>'},
+    d:'<code>tool_calls_requested</code> rỗng nên vòng lặp dừng. Đây là lần gọi model cuối của lượt.'},
+   {t:'run_completed',raw:{...base,sequence:8,type:'run_completed',timestamp:'<iso>',answer_chars:s.ans.length},
+    d:'Trace chỉ ghi độ dài câu trả lời, không ghi nội dung. Số 8 là tổng bước sự kiện của lượt này: 2 model call, 1 tool call. Nếu lượt lỗi, dòng này được thay bằng <code>run_failed</code>.'},
+  ];
+})();
+function fmtJson(o){return esc(JSON.stringify(o)).replace(/"([a-z_]+)":/g,'<span class="k">"$1"</span>:').replace(/(\[\])/g,'<span class="t">$1</span>')}
+function renderJl(i){
+  $('#jls').innerHTML=JL.map((x,j)=>`<div class="jl ${j===i?'on':''}" data-i="${j}">${fmtJson(x.raw)}</div>`).join('');
+  $$('#jls .jl').forEach(e=>e.onclick=()=>renderJl(+e.dataset.i));
+  const x=JL[i];$('#jlDetail').innerHTML=`<h3>${i+1}. ${x.t} <span class="tag sim">minh hoạ</span></h3><p>${x.d}</p><p class="invisible-hint">File trace nằm ở <code>traces/&lt;thời gian&gt;_&lt;conversation&gt;_turnNN_&lt;run&gt;.jsonl</code>. Mỗi dòng bắt đầu bằng <code>project_name</code>. Các giá trị trong dấu <code>&lt; &gt;</code> cần số đo thật nên để trống.</p>`;
+}
+renderJl(4);
+
+/* ---------- 10. config ---------- */
+function renderEnv(){
+  const k=$('#eKey').checked,m=$('#eModel').checked,b=$('#eBase').checked;
+  const miss=[!k&&'OPENAI_API_KEY',!m&&'MODEL_NAME'].filter(Boolean);
+  $('#eInput').disabled=$('#eSend').disabled=!!miss.length;
+  $('#eInput').placeholder=miss.length?'Ô chat bị khóa':'Nhắn cho agent…';
+  $('#eNote').className='note '+(miss.length?'bad':'ok');
+  $('#eNote').innerHTML=miss.length?`<b>Thiếu ${miss.join(', ')}.</b> UI hiện cảnh báo, khóa ô chat và app không gọi model.`:'Đã đủ các biến bắt buộc, ô chat được mở.';
+  $('#ePre').textContent=miss.length?'load_settings() trả về (None, '+JSON.stringify(miss)+')\n# không tạo model, không gọi provider':
+`load_settings() trả về Settings(...)
+ChatOpenAI(
+  model=MODEL_NAME,
+  api_key=OPENAI_API_KEY${b?',\n  base_url=OPENAI_BASE_URL':''}
+)`;
+}
+['#eKey','#eModel','#eBase'].forEach(i=>$(i).onchange=renderEnv);renderEnv();
+
+/* nav highlight */
+const links=$$('#nav a');
+const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting)links.forEach(a=>a.classList.toggle('on',a.getAttribute('href')==='#'+e.target.id))}),{rootMargin:'-30% 0px -60% 0px'});
+$$('section').forEach(s=>io.observe(s));
+</script>
+</body>
+</html>
