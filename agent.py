@@ -116,12 +116,12 @@ class ContextCompactAgent:
                 result.append(AIMessage(content=content))
         return result
 
-    def invoke(self, input: dict, config: dict | None = None):
+    def invoke(self, input: dict, config: dict | None = None, **kwargs):
         messages = input.get("messages", []) if isinstance(input, dict) else []
         self.last_compaction_stats = None
         if not isinstance(messages, list) or len(messages) == 0:
             self.last_input_messages = messages
-            return self.agent.invoke(input, config=config)
+            return self.agent.invoke(input, config=config, **kwargs)
         dict_msgs = self._to_dict(messages)
         total_tokens = sum(self.compactor.estimate_tokens(str(m.get("content", ""))) for m in dict_msgs)
         if self.policy.should_compact(total_tokens, len(dict_msgs)):
@@ -133,9 +133,9 @@ class ContextCompactAgent:
         self.last_input_messages = messages
         new_input = dict(input)
         new_input["messages"] = messages
-        return self.agent.invoke(new_input, config=config)
+        return self.agent.invoke(new_input, config=config, **kwargs)
 
-    def stream(self, input: dict, config: dict | None = None):
+    def stream(self, input: dict, config: dict | None = None, **kwargs):
         self.last_compaction_stats = None
         messages = input.get("messages", []) if isinstance(input, dict) else []
         if isinstance(messages, list) and len(messages) > 0:
@@ -150,4 +150,4 @@ class ContextCompactAgent:
         self.last_input_messages = messages
         new_input = dict(input)
         new_input["messages"] = messages
-        return self.agent.stream(new_input, config=config)
+        return self.agent.stream(new_input, config=config, **kwargs)
