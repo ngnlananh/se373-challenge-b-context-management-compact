@@ -2,9 +2,11 @@
 
 from langchain.agents import create_agent
 from langchain.agents.middleware import ModelCallLimitMiddleware, ToolCallLimitMiddleware
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage, ToolMessage
 from langchain_openai import ChatOpenAI
 
 import paths
+from compaction import Compactor, CompactionPolicy, WorkingMemory
 from config import MODEL_CALL_LIMIT, TOOL_CALL_LIMIT, Settings
 from observer import ObserverMiddleware
 from prompts import build_system_prompt
@@ -45,3 +47,79 @@ def build_agent(model):
             ObserverMiddleware(),  # cuối danh sách = sát model/tool invocation nhất
         ],
     )
+
+class ContextCompactAgent:
+    """Wrapper around the original LangChain agent with selective compaction."""
+
+    def __init__(self, agent, policy: CompactionPolicy | None = None):
+        self.agent = agent
+        self.policy = policy or CompactionPolicy()
+        self.compactor = Compactor(self.policy)
+        self.working_memory = WorkingMemory()
+        self.compaction_count = 0
+
+    @staticmethod
+    def _to_dict(messages: list[BaseMessage]) -> list[dict]:
+        result = []
+        for msg in messages:
+            if isinstance(msg, HumanMessage):
+                result.append({"role": "user", "content": msg.content})
+            elif isinstance(msg, AIMessage):
+                result.append({"role": "assistant", "content": msg.content})
+            elif isinstance(msg, ToolMessage):
+                result.append({"role": "tool", "content": msg.content})
+            elif isinstance(msg, SystemMessage):
+                result.append({"role": "system", "content": msg.content})
+            else:
+                result.append({"role": getattr(msg, "type", "assistant"), "content": msg.content})
+        return result
+
+    @staticmethod
+    def _from_dict(messages: list[dict]) -> list[BaseMessage]:
+        result = []
+        for msg in messages:
+            role = msg.get("role")
+            content = msg.get("content", "")
+            if msg.get("type") == "system_memory":
+                result.append(SystemMessage(content=content))
+            elif role == "system":
+                result.append(SystemMessage(content=content))
+            elif role == "user":
+                result.append(HumanMessage(content=content))
+            elif role == "tool":
+                result.append(ToolMessage(content=content, tool_call_id=msg.get("tool_call_id", "compact")))
+            elif role == "assistant":
+                result.append(AIMessage(content=content))
+            else:
+                result.append(AIMessage(content=content))
+        return result
+
+    def invoke(self, input: dict, config: dict | None = None):
+        messages = input.get("messages", []) if isinstance(input, dict) else []
+        if not isinstance(messages, list) or len(messages) == 0:
+            return self.agent.invoke(input, config=config)
+        dict_msgs = self._to_dict(messages)
+        total_tokens = sum(self.compactor.estimate_tokens(str(m.get("content", ""))) for m in dict_msgs)
+        if self.policy.should_compact(total_tokens, len(dict_msgs)):
+            compacted, memory, stats = self.compactor.compact(dict_msgs, self.working_memory)
+            self.working_memory = memory
+            self.compaction_count += 1
+            messages = self._from_dict(compacted)
+        new_input = dict(input)
+        new_input["messages"] = messages
+        return self.agent.invoke(new_input, config=config)
+
+    def stream(self, input: dict, config: dict | None = None):
+        messages = input.get("messages", []) if isinstance(input, dict) else []
+        if isinstance(messages, list) and len(messages) > 0:
+            dict_msgs = self._to_dict(messages)
+            total_tokens = sum(self.compactor.estimate_tokens(str(m.get("content", ""))) for m in dict_msgs)
+            if self.policy.should_compact(total_tokens, len(dict_msgs)):
+                compacted, memory, stats = self.compactor.compact(dict_msgs, self.working_memory)
+                self.working_memory = memory
+                self.compaction_count += 1
+                messages = self._from_dict(compacted)
+                new_input = dict(input)
+                new_input["messages"] = messages
+                return self.agent.stream(new_input, config=config)
+        return self.agent.stream(input, config=config)
