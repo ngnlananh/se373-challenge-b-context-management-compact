@@ -159,17 +159,34 @@ class Compactor:
             "truncated": 0
         }
         
-        # Always keep system messages
+        # Keep system messages in place; history compaction operates on turns.
         for msg in messages:
-            if msg.get("role") == "system" and self.policy.keep_system_messages:
+            if (
+                msg.get("role") == "system"
+                and msg.get("type") != "system_memory"
+                and self.policy.keep_system_messages
+            ):
                 compacted.append(msg.copy())
-        
-        # Determine which messages to keep verbatim (recent turns)
-        start_idx = max(0, len(messages) - self.policy.keep_recent_turns * 2)  # rough estimate
-        recent_messages = messages[start_idx:]
-        
+
+        history_messages = [
+            msg for msg in messages
+            if msg.get("role") != "system" and msg.get("type") != "system_memory"
+        ]
+        user_positions = [i for i, msg in enumerate(history_messages) if msg.get("role") == "user"]
+        if len(user_positions) > self.policy.keep_recent_turns:
+            # Start at a user boundary so a tool result is never retained without
+            # the assistant tool call that produced it (or vice versa).
+            start_idx = user_positions[-self.policy.keep_recent_turns]
+        else:
+            start_idx = 0
+        recent_messages = history_messages[start_idx:]
+        latest_user_index = max(
+            (i for i, msg in enumerate(recent_messages) if msg.get("role") == "user"),
+            default=-1,
+        )
+
         # Process old messages - summarize/drop
-        old_messages = messages[:start_idx]
+        old_messages = history_messages[:start_idx]
         if old_messages and self.policy.summarize_old_turns:
             # Create summary of old turns
             summary_parts = ["[COMPACTED HISTORY]"]
@@ -189,11 +206,16 @@ class Compactor:
             stats["summarized"] = len(old_messages)
         
         # Process recent messages
-        for msg in recent_messages:
+        for recent_index, msg in enumerate(recent_messages):
             content = str(msg.get("content", ""))
             
             # Drop redundant acks if policy says so
-            if self.policy.drop_redundant_acks and self.is_redundant_ack(content) and msg.get("role") == "user":
+            if (
+                self.policy.drop_redundant_acks
+                and recent_index != latest_user_index
+                and self.is_redundant_ack(content)
+                and msg.get("role") == "user"
+            ):
                 stats["dropped"] += 1
                 continue
             

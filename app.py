@@ -9,7 +9,8 @@ import streamlit as st
 from langchain_core.messages import AIMessage, HumanMessage
 
 import paths
-from agent import TOOLS, build_agent, build_model, capabilities, system_prompt
+from agent import ContextCompactAgent, TOOLS, build_agent, build_model, capabilities, system_prompt
+from compaction import CompactionPolicy, WorkingMemory
 from config import APP_TITLE, CAPABILITY_TEXT, PROJECT_NAME, RECURSION_LIMIT, load_settings
 from observer import (
     STATUS_DONE,
@@ -72,6 +73,7 @@ def new_conversation() -> None:
     ss.model_history = []  # LangChain messages đầy đủ (AI, tool calls, tool results)
     ss.ui_history = []  # mỗi lượt: user text, final answer, trace events, lỗi
     ss.observer = Observer(conversation_id=ss.conversation_id)
+    ss.compaction_state = {"memory": WorkingMemory().to_dict(), "count": 0, "last": None}
     ss.pop("snapshot_choice", None)
     ss.pop("message_choice", None)
 
@@ -79,6 +81,8 @@ def new_conversation() -> None:
 def init_state() -> None:
     if "observer" not in st.session_state:
         new_conversation()
+    elif "compaction_state" not in st.session_state:
+        st.session_state.compaction_state = {"memory": WorkingMemory().to_dict(), "count": 0, "last": None}
 
 
 # ---------------------------------------------------------------- trace rendering
@@ -189,6 +193,14 @@ def render_history() -> None:
                 st.markdown(turn["answer"])
             if turn["error"]:
                 st.error(turn["error"], icon=":material/error:")
+            if turn.get("compaction"):
+                stats = turn["compaction"]
+                st.info(
+                    f"Context đã nén: {stats['original_count']} → {stats['compacted_count']} messages; "
+                    f"token ước tính {stats['original_tokens']:,} → {stats['compacted_tokens']:,} "
+                    f"(giảm {stats['reduction']}%).",
+                    icon=":material/compress:",
+                )
             with st.expander(steps_label(turn["events"]), icon=":material/route:"):
                 render_events(turn["events"])
 
@@ -393,10 +405,37 @@ def render_event_log(observer: Observer) -> None:
             st.caption("Chưa có event.")
 
 
+def render_compaction_state() -> None:
+    state = st.session_state.get("compaction_state", {"count": 0, "last": None})
+    last = state.get("last")
+    with st.expander(f"Context compaction ({state.get('count', 0)} lần)", icon=":material/compress:"):
+        st.caption(
+            "Kích hoạt khi history đạt 20 messages hoặc vượt 5.600 token ước tính "
+            "(70% của 8.000; ước tính theo 4 ký tự/token). Giữ nguyên 4 lượt gần nhất."
+        )
+        if not last:
+            st.caption("Chưa kích hoạt trong conversation này.")
+            return
+        st.caption(f"Lần nén gần nhất: lượt chat {last['chat_turn']}.")
+        cols = st.columns(2)
+        cols[0].metric("Messages", f"{last['compacted_count']} / {last['original_count']}", help="Sau nén / trước nén")
+        cols[1].metric(
+            "Token ước tính",
+            f"{last['compacted_tokens']:,} / {last['original_tokens']:,}",
+            help="Sau nén / trước nén; đây không phải tokenizer của model.",
+        )
+        st.progress(max(0.0, min(1.0, last["reduction"] / 100)), text=f"Giảm {last['reduction']}%")
+        st.caption(
+            f"Lượt cũ tóm lược: {last['summarized']} messages · "
+            f"Xác nhận ngắn bỏ: {last['dropped']} · Log rút gọn: {last['truncated']}"
+        )
+
+
 def render_state_panel(interactive: bool) -> None:
     observer: Observer = st.session_state.observer
     st.subheader("State & Context")
     render_counters(observer)
+    render_compaction_state()
     render_context(observer, interactive)
     render_capabilities(observer, capabilities(), [tool_schema(t) for t in TOOLS])
     render_messages(observer, interactive)
@@ -420,7 +459,10 @@ def run_turn(text: str, settings, state_box) -> None:
     run_id = uuid.uuid4().hex
     observer.start_turn(run_id)
     writer = TraceWriter(paths.TRACES_DIR, PROJECT_NAME, observer.conversation_id, run_id, observer.chat_turn)
-    turn = {"run_id": run_id, "chat_turn": observer.chat_turn, "user": text, "answer": "", "error": None, "events": []}
+    turn = {
+        "run_id": run_id, "chat_turn": observer.chat_turn, "user": text,
+        "answer": "", "error": None, "events": [], "compaction": None,
+    }
     ss.ui_history.append(turn)
     working = list(ss.model_history) + [HumanMessage(content=text)]
 
@@ -448,12 +490,29 @@ def run_turn(text: str, settings, state_box) -> None:
 
     refresh()
     try:
-        agent = build_agent(build_model(settings))
+        compaction_state = ss.compaction_state
+        agent = ContextCompactAgent(
+            build_agent(build_model(settings)),
+            policy=CompactionPolicy(),
+            working_memory=WorkingMemory.from_dict(compaction_state["memory"]),
+            compaction_count=compaction_state["count"],
+        )
         stream = agent.stream(
             {"messages": working},
             config={"recursion_limit": RECURSION_LIMIT},
             stream_mode=["updates", "custom"],
         )
+        # Persist the compacted conversation as the new baseline so later turns
+        # do not repeatedly resend the pre-compaction history.
+        working = list(agent.last_input_messages)
+        input_message_count = len(working)
+        observer.sync_messages(working)
+        if agent.last_compaction_stats is not None:
+            turn["compaction"] = {"chat_turn": observer.chat_turn, **agent.last_compaction_stats}
+            compaction_state["memory"] = agent.working_memory.to_dict()
+            compaction_state["count"] = agent.compaction_count
+            compaction_state["last"] = turn["compaction"]
+            refresh()
         for mode, chunk in stream:
             if mode == "custom" and isinstance(chunk, dict) and chunk.get("observer"):
                 emit(chunk["event"], chunk["data"])
@@ -463,7 +522,7 @@ def run_turn(text: str, settings, state_box) -> None:
                         working.extend(update["messages"])
                         observer.sync_messages(working)
             refresh()
-        turn["answer"] = final_answer(working[len(ss.model_history) + 1 :])
+        turn["answer"] = final_answer(working[input_message_count:])
         ss.model_history = working
         emit("run_completed", {"answer_chars": len(turn["answer"])})
         status.update(label="Hoàn tất", state="complete", expanded=False)
